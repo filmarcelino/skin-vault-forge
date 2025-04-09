@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -47,7 +48,7 @@ const AdminUserManagement = () => {
 
       // Fetch admin roles using the custom RPC function
       const { data: adminUsersData, error: adminError } = await supabase
-        .rpc('get_all_admin_users' as any);
+        .rpc<string[]>('get_all_admin_users');
 
       if (adminError) throw adminError;
 

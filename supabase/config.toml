@@ -1,5 +1,33 @@
 
+# This file was created by Supabase and should be kept as is to prevent issues
 project_id = "mdwifkqdnqdvmgowwssz"
 
-[functions.fetch-cs2-skins]
-verify_jwt = false
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost:54321"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[realtime]
+enabled = true
+
+[functions]
+[functions.fetch-steam-user]
+verify_jwt = true

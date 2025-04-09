@@ -1,1 +1,5 @@
+
 project_id = "mdwifkqdnqdvmgowwssz"
+
+[functions.fetch-cs2-skins]
+verify_jwt = false

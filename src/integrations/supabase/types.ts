@@ -9,108 +9,123 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      cs2api: {
+      skins: {
         Row: {
           created_at: string
+          exterior: string | null
+          float: number | null
           id: string
-          image: string
-          market_hash_name: string | null
+          image_url: string | null
           name: string
-          rarity: string
-          weapon: string
+          price_brl: number | null
+          price_cny: number | null
+          price_rub: number | null
+          price_usd: number | null
+          rarity: string | null
+          weapon_type: string | null
         }
         Insert: {
           created_at?: string
+          exterior?: string | null
+          float?: number | null
           id?: string
-          image: string
-          market_hash_name?: string | null
+          image_url?: string | null
           name: string
-          rarity: string
-          weapon: string
+          price_brl?: number | null
+          price_cny?: number | null
+          price_rub?: number | null
+          price_usd?: number | null
+          rarity?: string | null
+          weapon_type?: string | null
         }
         Update: {
           created_at?: string
+          exterior?: string | null
+          float?: number | null
           id?: string
-          image?: string
-          market_hash_name?: string | null
+          image_url?: string | null
           name?: string
-          rarity?: string
-          weapon?: string
+          price_brl?: number | null
+          price_cny?: number | null
+          price_rub?: number | null
+          price_usd?: number | null
+          rarity?: string | null
+          weapon_type?: string | null
         }
         Relationships: []
       }
-      profiles: {
+      user_collections: {
         Row: {
+          acquired_date: string | null
+          acquisition_price: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          skin_id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_date?: string | null
+          acquisition_price?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          skin_id: string
+          user_id: string
+        }
+        Update: {
+          acquired_date?: string | null
+          acquisition_price?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          skin_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_collections_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_collections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
           created_at: string
           email: string | null
           id: string
-          is_admin: boolean
           steam_id: string | null
+          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           id: string
-          is_admin?: boolean
           steam_id?: string | null
+          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          is_admin?: boolean
           steam_id?: string | null
-        }
-        Relationships: []
-      }
-      user_skins: {
-        Row: {
-          acquisition_method: string
-          added_at: string
-          currency: string
-          exterior: string
-          float: number
-          from_steam: boolean
-          id: string
-          image: string
-          name: string
-          notes: string | null
-          purchase_price: number
-          rarity: string
-          user_id: string
-          weapon: string
-        }
-        Insert: {
-          acquisition_method: string
-          added_at?: string
-          currency: string
-          exterior: string
-          float: number
-          from_steam?: boolean
-          id?: string
-          image: string
-          name: string
-          notes?: string | null
-          purchase_price: number
-          rarity: string
-          user_id: string
-          weapon: string
-        }
-        Update: {
-          acquisition_method?: string
-          added_at?: string
-          currency?: string
-          exterior?: string
-          float?: number
-          from_steam?: boolean
-          id?: string
-          image?: string
-          name?: string
-          notes?: string | null
-          purchase_price?: number
-          rarity?: string
-          user_id?: string
-          weapon?: string
+          username?: string | null
         }
         Relationships: []
       }

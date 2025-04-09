@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +19,7 @@ type User = {
   id: string;
   email: string | null;
   username: string | null;
-  isAdmin: boolean;
+  is_admin: boolean;
   created_at: string;
 };
 
@@ -36,7 +37,7 @@ const AdminUserManagement = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      // Fetch users
+      // Fetch users with is_admin field
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
@@ -44,22 +45,8 @@ const AdminUserManagement = () => {
 
       if (usersError) throw usersError;
 
-      // Fetch admin roles using the custom RPC function
-      const { data: adminUsersData, error: adminError } = await supabase
-        .rpc('get_all_admin_users') as unknown as { data: string[], error: any };
-
-      if (adminError) throw adminError;
-
-      // Create a set of admin user IDs for quick lookup
-      const adminUserIds = new Set(adminUsersData || []);
-
-      // Combine the data
-      const combinedUsers = usersData.map(user => ({
-        ...user,
-        isAdmin: adminUserIds.has(user.id)
-      })) as User[];
-
-      setUsers(combinedUsers);
+      // No need for separate RPC call since is_admin is now directly on users table
+      setUsers(usersData as User[]);
     } catch (error) {
       console.error('Error loading users:', error);
       toast({
@@ -87,7 +74,7 @@ const AdminUserManagement = () => {
       // Update local state
       setUsers(users.map(user => 
         user.id === userId 
-          ? { ...user, isAdmin: !isCurrentlyAdmin } 
+          ? { ...user, is_admin: !isCurrentlyAdmin } 
           : user
       ));
 
@@ -165,7 +152,7 @@ const AdminUserManagement = () => {
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {user.isAdmin ? (
+                    {user.is_admin ? (
                       <Check className="h-5 w-5 text-green-500" />
                     ) : (
                       <X className="h-5 w-5 text-gray-300" />
@@ -176,14 +163,14 @@ const AdminUserManagement = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => toggleAdminRole(user.id, user.isAdmin)}
+                        onClick={() => toggleAdminRole(user.id, user.is_admin)}
                       >
-                        {user.isAdmin ? (
+                        {user.is_admin ? (
                           <ShieldOff className="h-4 w-4 mr-1" />
                         ) : (
                           <Shield className="h-4 w-4 mr-1" />
                         )}
-                        {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                        {user.is_admin ? 'Remove Admin' : 'Make Admin'}
                       </Button>
                       <Button
                         variant="outline"

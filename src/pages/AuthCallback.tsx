@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,7 +41,7 @@ const AuthCallback = () => {
           try {
             // Parse the session data
             const sessionData = JSON.parse(decodeURIComponent(sessionParam));
-            console.log("Session data parsed successfully");
+            console.log("Session data parsed successfully:", sessionData);
             
             // Set the session in Supabase
             if (sessionData?.access_token && sessionData?.refresh_token) {

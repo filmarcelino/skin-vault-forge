@@ -22,6 +22,7 @@ export const checkAdminStatus = async () => {
       return false;
     }
     
+    // Use optional chaining to safely access is_admin
     return data?.is_admin === true;
   } catch (error) {
     console.error('Error in checkAdminStatus:', error);
@@ -72,5 +73,49 @@ export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
   } catch (error) {
     console.error('Error in toggleAdminStatus:', error);
     return null;
+  }
+};
+
+/**
+ * Grant admin role to a user
+ */
+export const grantAdminRole = async (userId: string) => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ is_admin: true })
+      .eq('id', userId);
+    
+    if (error) {
+      console.error('Error granting admin role:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in grantAdminRole:', error);
+    return false;
+  }
+};
+
+/**
+ * Revoke admin role from a user
+ */
+export const revokeAdminRole = async (userId: string) => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ is_admin: false })
+      .eq('id', userId);
+    
+    if (error) {
+      console.error('Error revoking admin role:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in revokeAdminRole:', error);
+    return false;
   }
 };

@@ -118,7 +118,7 @@ serve(async (req) => {
       if (insertError) {
         console.error(`Error inserting user: ${insertError.message}`);
         // Continue anyway, but log the error
-        console.log(`Will continue with session creation despite error`);
+        console.log(`Will continue with session creation despite error: ${JSON.stringify(insertError)}`);
       }
     }
     

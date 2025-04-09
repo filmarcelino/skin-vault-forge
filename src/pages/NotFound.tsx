@@ -22,6 +22,9 @@ const NotFound = () => {
         <p className="text-muted-foreground mb-8">
           The page you're looking for doesn't exist or has been moved.
         </p>
+        <p className="text-muted-foreground mb-4">
+          Current path: {location.pathname}
+        </p>
         <Button 
           onClick={() => navigate('/')}
           className="text-primary-foreground hover:bg-primary/90"

@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { FaSteam } from 'react-icons/fa';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,41 +14,20 @@ const SteamLoginButton = () => {
     try {
       setIsLoading(true);
       
-      // First try to use the Supabase built-in Steam provider
-      try {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'steam' as any,
-          options: {
-            redirectTo: window.location.origin + '/auth/callback',
-          },
-        });
-        
-        if (error) {
-          // If the error is NOT about unsupported provider, throw it
-          if (!error.message?.includes('Unsupported provider')) {
-            throw error;
-          }
-          
-          // Otherwise, fall back to our custom Steam auth flow
-          console.log('Falling back to custom Steam auth flow...');
-          
-          // Call our edge function
-          const { data: redirectData, error: functionError } = await supabase.functions.invoke('steam-start');
-          
-          if (functionError) {
-            throw functionError;
-          }
-          
-          // Redirect to Steam login page
-          if (redirectData?.redirectUrl) {
-            window.location.href = redirectData.redirectUrl;
-          } else {
-            throw new Error('Invalid response from steam-start function');
-          }
-        }
-      } catch (error) {
-        throw error;
+      // Call our edge function to start Steam authentication
+      const { data: redirectData, error: functionError } = await supabase.functions.invoke('steam-start');
+      
+      if (functionError) {
+        throw functionError;
       }
+      
+      // Redirect to Steam login page
+      if (redirectData?.redirectUrl) {
+        window.location.href = redirectData.redirectUrl;
+      } else {
+        throw new Error('Invalid response from steam-start function');
+      }
+      
     } catch (error) {
       console.error('Steam login error:', error);
       toast({

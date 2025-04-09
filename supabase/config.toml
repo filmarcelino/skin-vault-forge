@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.steam-callback]
 verify_jwt = false
+
+[functions.fetch-steam-user]
+verify_jwt = false

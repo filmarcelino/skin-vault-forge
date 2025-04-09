@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseWithAdmin } from '@/integrations/supabase/client-override';
 
 // Define a User type that includes the is_admin field 
 // to match how we're using it in our code
@@ -23,7 +24,7 @@ export const checkAdminStatus = async () => {
 
     const userId = session.user.id;
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseWithAdmin
       .from('users')
       .select('*')
       .eq('id', userId)
@@ -47,7 +48,7 @@ export const checkAdminStatus = async () => {
  */
 export const getAllUsers = async (): Promise<User[]> => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseWithAdmin
       .from('users')
       .select('*')
       .order('created_at', { ascending: false });
@@ -86,7 +87,7 @@ export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
     }
     
     // Now update with is_admin
-    const { data, error } = await supabase
+    const { data, error } = await supabaseWithAdmin
       .from('users')
       .update({ is_admin: isAdmin })
       .eq('id', userId)
@@ -109,7 +110,7 @@ export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
  */
 export const grantAdminRole = async (userId: string) => {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseWithAdmin
       .from('users')
       .update({ is_admin: true })
       .eq('id', userId);
@@ -131,7 +132,7 @@ export const grantAdminRole = async (userId: string) => {
  */
 export const revokeAdminRole = async (userId: string) => {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseWithAdmin
       .from('users')
       .update({ is_admin: false })
       .eq('id', userId);

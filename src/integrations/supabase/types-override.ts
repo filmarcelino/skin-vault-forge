@@ -7,7 +7,7 @@ export type Database = {
     Tables: {
       users: {
         Row: OriginalDatabase['public']['Tables']['users']['Row'] & {
-          is_admin?: boolean;
+          is_admin: boolean;
         };
         Insert: OriginalDatabase['public']['Tables']['users']['Insert'] & {
           is_admin?: boolean;

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseWithAdmin } from '@/integrations/supabase/client-override';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,7 +42,7 @@ const AdminUserManagement = () => {
     setLoading(true);
     try {
       // Fetch users with is_admin field
-      const { data: usersData, error: usersError } = await supabase
+      const { data: usersData, error: usersError } = await supabaseWithAdmin
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });

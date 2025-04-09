@@ -13,8 +13,7 @@ export const checkAdminStatus = async (): Promise<boolean> => {
 
     const userId = session.user.id;
     
-    // Check if user has admin role in the user_roles table
-    // Using rpc workaround since user_roles is not in the TypeScript types yet
+    // Check if user has admin role using the RPC function
     const { data, error } = await supabase
       .rpc('has_admin_role', { user_id: userId });
     
@@ -36,7 +35,7 @@ export const checkAdminStatus = async (): Promise<boolean> => {
  */
 export const grantAdminRole = async (userId: string): Promise<boolean> => {
   try {
-    // Using raw query workaround since user_roles is not in the TypeScript types yet
+    // Use RPC function to add admin role
     const { error } = await supabase
       .rpc('add_admin_role', { user_id: userId });
     
@@ -55,7 +54,7 @@ export const grantAdminRole = async (userId: string): Promise<boolean> => {
  */
 export const revokeAdminRole = async (userId: string): Promise<boolean> => {
   try {
-    // Using raw query workaround since user_roles is not in the TypeScript types yet
+    // Use RPC function to remove admin role
     const { error } = await supabase
       .rpc('remove_admin_role', { user_id: userId });
     

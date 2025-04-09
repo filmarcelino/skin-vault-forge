@@ -47,13 +47,13 @@ const AdminUserManagement = () => {
       if (usersError) throw usersError;
 
       // Fetch admin roles using the custom RPC function
-      const { data: adminRolesData, error: rolesError } = await supabase
+      const { data: adminUsersData, error: adminError } = await supabase
         .rpc('get_all_admin_users');
 
-      if (rolesError) throw rolesError;
+      if (adminError) throw adminError;
 
       // Create a set of admin user IDs for quick lookup
-      const adminUserIds = new Set(adminRolesData || []);
+      const adminUserIds = new Set(adminUsersData || []);
 
       // Combine the data
       const combinedUsers = usersData.map(user => ({

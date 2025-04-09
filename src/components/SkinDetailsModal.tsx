@@ -16,7 +16,7 @@ const SkinDetailsModal: React.FC<SkinDetailsModalProps> = ({ skin, isOpen, onClo
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[90vh] z-[99999]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2">
             <span>{skin.name}</span>

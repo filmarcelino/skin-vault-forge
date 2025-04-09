@@ -39,7 +39,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, onSel
 
   return (
     <>
-      <div className="p-1">
+      <div className="p-1 bg-background">
         {results.map((skin) => (
           <div
             key={skin.id}

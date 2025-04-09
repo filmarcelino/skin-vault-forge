@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Inventory from "./pages/Inventory";
 import InventoryManagement from "./pages/InventoryManagement";
 import InventoryAnalytics from "./pages/InventoryAnalytics";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -26,6 +27,7 @@ const App = () => {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/management/:id" element={<InventoryManagement />} />
             <Route path="/inventory/analytics" element={<InventoryAnalytics />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

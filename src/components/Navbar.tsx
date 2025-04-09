@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart } from 'lucide-react';
+import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -9,6 +8,8 @@ import SearchResults from './SearchResults';
 import { Badge } from './ui/badge';
 import { Skin } from '@/types/skin';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { checkAdminStatus } from '@/utils/adminUtils';
 
 const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -19,7 +20,6 @@ const Navbar: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Close search results dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -33,7 +33,6 @@ const Navbar: React.FC = () => {
     };
   }, []);
 
-  // Search function with debounce
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
@@ -44,10 +43,8 @@ const Navbar: React.FC = () => {
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        // Split query into words to search each part
         const queryParts = searchQuery.toLowerCase().split(/\s+/).filter(part => part.length > 0);
         
-        // Build a more complex query with OR conditions for each part
         let queryCondition = '';
         
         queryParts.forEach((part, index) => {
@@ -56,12 +53,11 @@ const Navbar: React.FC = () => {
           queryCondition += `,weapon_type.ilike.%${part}%`;
         });
         
-        // Perform search in Supabase with improved query
         const { data, error } = await supabase
           .from('skins')
           .select('*')
           .or(queryCondition)
-          .limit(20); // Increased limit to show more results
+          .limit(20);
         
         if (error) {
           console.error('Search error:', error);
@@ -69,7 +65,6 @@ const Navbar: React.FC = () => {
         }
 
         if (data) {
-          // Format the returned data to match our Skin type
           const formattedResults: Skin[] = data.map(skin => ({
             id: skin.id,
             name: skin.name,
@@ -78,7 +73,7 @@ const Navbar: React.FC = () => {
             rarity: (skin.rarity as 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband') || 'common',
             exterior: skin.exterior || 'Factory New',
             price_usd: skin.price_usd,
-            statTrak: false // Default value since we don't have this in DB
+            statTrak: false
           }));
           
           setSearchResults(formattedResults);
@@ -89,7 +84,7 @@ const Navbar: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -106,6 +101,13 @@ const Navbar: React.FC = () => {
       setIsSearchOpen(false);
     }
   };
+
+  const { data: isAdmin } = useQuery({
+    queryKey: ['admin-status'],
+    queryFn: checkAdminStatus,
+    retry: false,
+    staleTime: 300000,
+  });
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
@@ -132,6 +134,12 @@ const Navbar: React.FC = () => {
                   <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Statistics
                   </a>
+                  {isAdmin && (
+                    <Link to="/admin" className="flex items-center gap-2 text-primary hover:text-primary/80">
+                      <Shield className="h-4 w-4" />
+                      Admin Dashboard
+                    </Link>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -172,6 +180,15 @@ const Navbar: React.FC = () => {
             >
               Statistics
             </a>
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className="text-sm font-medium transition-colors hover:text-primary/80 text-primary flex items-center gap-1"
+              >
+                <Shield className="h-3 w-3" />
+                Admin
+              </Link>
+            )}
           </nav>
         )}
 
@@ -197,7 +214,6 @@ const Navbar: React.FC = () => {
               </Button>
             )}
 
-            {/* Search Results Dropdown - Increased z-index */}
             {showDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[9999] max-h-[500px] overflow-y-auto">
                 <SearchResults 

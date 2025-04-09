@@ -33,15 +33,12 @@ const Inventory = () => {
   const [filteredSkins, setFilteredSkins] = useState<UserSkin[]>([]);
   const isMobile = useIsMobile();
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(24);
   const [totalSkins, setTotalSkins] = useState(0);
   const [activeTab, setActiveTab] = useState('all');
   
   useEffect(() => {
-    // Initialize demo inventory for development purposes
-    // In a real app with auth, this would be removed
     initializeDemoInventory().then(() => {
       fetchInventory(currentPage, pageSize, activeTab);
     });
@@ -103,7 +100,6 @@ const Inventory = () => {
     });
     
     if (result) {
-      // Refresh the inventory with the new skin
       fetchInventory(currentPage, pageSize, activeTab, true);
       setIsAddModalOpen(false);
     }
@@ -119,16 +115,13 @@ const Inventory = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setCurrentPage(1);
-    // This will trigger the useEffect to reload data
   };
   
-  // Calculate total pages
   const totalPages = Math.ceil(totalSkins / pageSize);
   
-  // Generate pagination numbers
   const getPaginationItems = () => {
     const items = [];
-    const maxPagesToShow = 5; // Maximum number of page numbers to show
+    const maxPagesToShow = 5;
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
@@ -155,9 +148,7 @@ const Inventory = () => {
   
   const handleDeleteSkin = async (id: string) => {
     try {
-      // In a real app, this would call an API to delete the skin
       toast.info("Delete functionality will be implemented soon");
-      // For now, we can just refresh the data
       fetchInventory(currentPage, pageSize, activeTab, true);
     } catch (err: any) {
       console.error("Error deleting skin:", err);
@@ -250,19 +241,12 @@ const Inventory = () => {
                   {filteredSkins.map((skin) => (
                     <SkinCard 
                       key={skin.collection_id}
-                      name={skin.name}
-                      weaponType={skin.weapon_type}
-                      image={skin.image_url}
-                      rarity={skin.rarity}
-                      wear={skin.exterior}
-                      price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
-                             skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                      statTrak={skin.statTrak}
+                      skin={skin}
+                      onDelete={handleDeleteSkin}
                     />
                   ))}
                 </div>
                 
-                {/* Pagination */}
                 {totalSkins > pageSize && (
                   <Pagination className="my-6">
                     <PaginationContent>
@@ -306,18 +290,11 @@ const Inventory = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* For demo purposes, we're showing all skins in all tabs since we don't have "source" implemented yet */}
                 {filteredSkins.map((skin) => (
                   <SkinCard 
                     key={skin.collection_id}
-                    name={skin.name}
-                    weaponType={skin.weapon_type}
-                    image={skin.image_url}
-                    rarity={skin.rarity}
-                    wear={skin.exterior}
-                    price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
-                           skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                    statTrak={skin.statTrak}
+                    skin={skin}
+                    onDelete={handleDeleteSkin}
                   />
                 ))}
               </div>
@@ -335,7 +312,6 @@ const Inventory = () => {
         </Tabs>
       </main>
       
-      {/* Add Skin Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[600px] z-[9999]">
           <DialogHeader>

@@ -76,17 +76,15 @@ const InventoryAnalytics = () => {
     'Other': '#A0A0A0'
   };
   
-  // Chart configurations
+  // Chart configurations - fixed to match ChartConfig type
   const chartConfig = {
-    rarity: {
-      common: { label: 'Common', theme: { light: '#B0C3D9', dark: '#B0C3D9' } },
-      uncommon: { label: 'Uncommon', theme: { light: '#5E98D9', dark: '#5E98D9' } },
-      rare: { label: 'Rare', theme: { light: '#4B69FF', dark: '#4B69FF' } },
-      mythical: { label: 'Mythical', theme: { light: '#8847FF', dark: '#8847FF' } },
-      legendary: { label: 'Legendary', theme: { light: '#D32CE6', dark: '#D32CE6' } },
-      ancient: { label: 'Ancient', theme: { light: '#EB4B4B', dark: '#EB4B4B' } },
-      contraband: { label: 'Contraband', theme: { light: '#FFCC00', dark: '#FFCC00' } },
-    },
+    common: { label: 'Common', theme: { light: '#B0C3D9', dark: '#B0C3D9' } },
+    uncommon: { label: 'Uncommon', theme: { light: '#5E98D9', dark: '#5E98D9' } },
+    rare: { label: 'Rare', theme: { light: '#4B69FF', dark: '#4B69FF' } },
+    mythical: { label: 'Mythical', theme: { light: '#8847FF', dark: '#8847FF' } },
+    legendary: { label: 'Legendary', theme: { light: '#D32CE6', dark: '#D32CE6' } },
+    ancient: { label: 'Ancient', theme: { light: '#EB4B4B', dark: '#EB4B4B' } },
+    contraband: { label: 'Contraband', theme: { light: '#FFCC00', dark: '#FFCC00' } },
   };
 
   return (
@@ -231,7 +229,7 @@ const InventoryAnalytics = () => {
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" nameKey="name">
+                    <Bar dataKey="value">
                       {typeData.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 

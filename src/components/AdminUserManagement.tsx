@@ -23,7 +23,7 @@ type User = {
   created_at: string;
   avatar_url: string | null;
   steam_id: string | null;
-  is_admin?: boolean;
+  is_admin: boolean;
 };
 
 const AdminUserManagement = () => {
@@ -171,7 +171,7 @@ const AdminUserManagement = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => toggleAdminRole(user.id, !!user.is_admin)}
+                        onClick={() => toggleAdminRole(user.id, user.is_admin)}
                       >
                         {user.is_admin ? (
                           <ShieldOff className="h-4 w-4 mr-1" />

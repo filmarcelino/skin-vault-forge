@@ -25,7 +25,7 @@ export type Database = {
   };
 };
 
-// Re-export all other types from the original types.ts with the 'type' keyword
+// Re-export all other types from the original types.ts with the 'export type' keyword
 export type { 
   Json,
   Tables,

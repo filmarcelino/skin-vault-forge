@@ -10,7 +10,7 @@ type User = {
   avatar_url: string | null;
   steam_id: string | null;
   created_at: string;
-  is_admin?: boolean;
+  is_admin: boolean;
 };
 
 /**
@@ -34,8 +34,8 @@ export const checkAdminStatus = async () => {
       return false;
     }
     
-    // First check if is_admin property exists (add type safety)
-    return 'is_admin' in data ? !!data.is_admin : false;
+    // Check if is_admin property exists and is true
+    return data && 'is_admin' in data ? !!data.is_admin : false;
   } catch (error) {
     console.error('Error in checkAdminStatus:', error);
     return false;

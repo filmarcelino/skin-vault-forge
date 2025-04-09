@@ -1,4 +1,3 @@
-
 // fetch-cs2-skins/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -40,6 +39,33 @@ const processSkinData = (skins: any[]): any[] => {
     float: null,
     exterior: null,
   }));
+};
+
+// Handle batching for large datasets
+const batchInsert = async (supabase: any, items: any[], batchSize = 500) => {
+  const batches = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
+  }
+  
+  let insertedCount = 0;
+  console.log(`Inserting ${items.length} items in ${batches.length} batches...`);
+  
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    const { error } = await supabase
+      .from('skins')
+      .insert(batch);
+    
+    if (error) {
+      throw new Error(`Error inserting batch ${i + 1}: ${error.message}`);
+    }
+    
+    insertedCount += batch.length;
+    console.log(`Progress: ${insertedCount}/${items.length} skins inserted (${Math.round(insertedCount / items.length * 100)}%)`);
+  }
+  
+  return insertedCount;
 };
 
 Deno.serve(async (req) => {
@@ -88,34 +114,18 @@ Deno.serve(async (req) => {
     // Process the data to match our schema
     const processedSkins = processSkinData(skinsData);
     
-    // First, delete existing skins to avoid duplicates
-    const { error: deleteError } = await supabase
-      .from('skins')
-      .delete()
-      .not('id', 'is', null);
+    console.log(`Processed ${processedSkins.length} skins, now inserting into database in batches...`);
     
-    if (deleteError) {
-      throw new Error(`Error clearing existing skins: ${deleteError.message}`);
-    }
+    // Insert data in batches to avoid timeout/memory issues
+    const insertedCount = await batchInsert(supabase, processedSkins);
     
-    console.log('Existing skins cleared, inserting new data...');
-    
-    // Insert the new skin data
-    const { error: insertError } = await supabase
-      .from('skins')
-      .insert(processedSkins);
-    
-    if (insertError) {
-      throw new Error(`Error inserting skins: ${insertError.message}`);
-    }
-    
-    console.log(`Successfully inserted ${processedSkins.length} skins into the database`);
+    console.log(`Successfully inserted ${insertedCount} skins into the database`);
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Imported ${processedSkins.length} skins`,
-        imported_count: processedSkins.length
+        message: `Imported ${insertedCount} skins`,
+        imported_count: insertedCount
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

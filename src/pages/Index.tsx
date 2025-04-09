@@ -9,9 +9,11 @@ import { ArrowUp, Loader2, ShoppingBag, Database, Cloud, RefreshCw } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Skin } from '@/types/skin';
+import { Skin, PaginatedSkins } from '@/types/skin';
 import InventoryStatsCard from '@/components/InventoryStatsCard';
 import { Link } from 'react-router-dom';
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationLink } from '@/components/ui/pagination';
+import { cacheSkins, getCachedSkins, getPaginationCacheKey } from '@/utils/skinCache';
 
 const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -19,16 +21,28 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalSkins, setTotalSkins] = useState(0);
+  
   const [totalStats, setTotalStats] = useState({ count: 0, value: 0 });
   const [localStats, setLocalStats] = useState({ count: 0, value: 0 });
   const [steamStats, setSteamStats] = useState({ count: 0, value: 0 });
   
   const [apiSkinsCount, setApiSkinsCount] = useState<number | null>(null);
   const [showSkinsSection, setShowSkinsSection] = useState(false);
+  const [filters, setFilters] = useState<Record<string, any>>({});
   
   useEffect(() => {
     fetchStats();
   }, []);
+  
+  useEffect(() => {
+    if (showSkinsSection) {
+      fetchSkins(currentPage, pageSize);
+    }
+  }, [currentPage, pageSize, showSkinsSection]);
   
   useEffect(() => {
     const handleScroll = () => {
@@ -69,15 +83,16 @@ const Index = () => {
       }
       
       setApiSkinsCount(count || 0);
+      setTotalSkins(count || 0);
       
       // Calculate stats for the cards
       if (skinData && skinData.length > 0) {
         const totalValue = skinData.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
-        setTotalStats({ count: skinData.length, value: totalValue });
+        setTotalStats({ count: count || 0, value: totalValue });
         
         // Mock data for the other cards - in a real app this would come from the database
-        setLocalStats({ count: Math.floor(skinData.length * 0.3), value: totalValue * 0.3 });
-        setSteamStats({ count: Math.floor(skinData.length * 0.7), value: totalValue * 0.7 });
+        setLocalStats({ count: Math.floor((count || 0) * 0.3), value: totalValue * 0.3 });
+        setSteamStats({ count: Math.floor((count || 0) * 0.7), value: totalValue * 0.7 });
       }
     } catch (err: any) {
       console.error("Error fetching stats:", err);
@@ -85,15 +100,43 @@ const Index = () => {
     }
   };
   
-  const fetchSkins = async () => {
+  // Fetch skins with pagination
+  const fetchSkins = async (page: number, size: number, refreshCache: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
       
+      // Check cache first (if not forced refresh)
+      const cacheKey = getPaginationCacheKey(page, size, filters);
+      
+      if (!refreshCache) {
+        const cachedData = getCachedSkins<PaginatedSkins>(cacheKey);
+        if (cachedData) {
+          setSkins(cachedData.skins);
+          setTotalSkins(cachedData.count);
+          setCurrentPage(cachedData.page);
+          setLoading(false);
+          setShowSkinsSection(true);
+          return;
+        }
+      }
+      
+      // Calculate pagination offset
+      const from = (page - 1) * size;
+      const to = from + size - 1;
+      
+      // Get total count first for pagination
+      const { count } = await supabase
+        .from('skins')
+        .select('*', { count: 'exact', head: true });
+      
+      setTotalSkins(count || 0);
+      
+      // Then fetch the current page of data
       const { data, error } = await supabase
         .from('skins')
         .select('*')
-        .limit(20);
+        .range(from, to);
       
       if (error) {
         throw new Error(error.message);
@@ -109,12 +152,21 @@ const Index = () => {
           exterior: skin.exterior || 'Factory New',
           price_usd: skin.price_usd,
           statTrak: Math.random() > 0.8,
+          float: skin.float,
         }));
         
         setSkins(formattedSkins);
         setShowSkinsSection(true);
         
-        toast.success(`Loaded ${formattedSkins.length} skins from database`);
+        // Cache the results
+        const paginatedData: PaginatedSkins = {
+          skins: formattedSkins,
+          count: count || 0,
+          page,
+          pageSize: size
+        };
+        
+        cacheSkins(cacheKey, paginatedData);
       } else {
         toast.info("No skins found in database. You can import them from the API.");
         setSkins([]);
@@ -140,7 +192,7 @@ const Index = () => {
       }
       
       toast.success("Successfully imported skins from API");
-      await fetchSkins();
+      await fetchSkins(1, pageSize, true); // refresh with first page
       await fetchStats(); // Refresh stats after import
     } catch (err: any) {
       console.error("Error importing skins:", err);
@@ -153,8 +205,46 @@ const Index = () => {
   
   const handleLoadSkins = () => {
     if (!showSkinsSection) {
-      fetchSkins();
+      fetchSkins(currentPage, pageSize);
     }
+  };
+  
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= Math.ceil((totalSkins || 0) / pageSize)) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(totalSkins / pageSize);
+  
+  // Generate pagination numbers
+  const getPaginationItems = () => {
+    const items = [];
+    const maxPagesToShow = 5; // Maximum number of page numbers to show
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink 
+            onClick={() => handlePageChange(i)}
+            isActive={currentPage === i}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    return items;
   };
   
   return (
@@ -212,6 +302,11 @@ const Index = () => {
                 'Loading stats...'
               )}
             </p>
+            {showSkinsSection && totalSkins > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Showing page {currentPage} of {totalPages}
+              </p>
+            )}
           </div>
           
           <div className="flex gap-2">
@@ -268,20 +363,45 @@ const Index = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
-                {skins.map((skin) => (
-                  <SkinCard 
-                    key={skin.id}
-                    name={skin.name}
-                    weaponType={skin.weapon_type}
-                    image={skin.image_url}
-                    rarity={skin.rarity}
-                    wear={skin.exterior}
-                    price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                    statTrak={skin.statTrak}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
+                  {skins.map((skin) => (
+                    <SkinCard 
+                      key={skin.id}
+                      name={skin.name}
+                      weaponType={skin.weapon_type}
+                      image={skin.image_url}
+                      rarity={skin.rarity}
+                      wear={skin.exterior}
+                      price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                      statTrak={skin.statTrak}
+                    />
+                  ))}
+                </div>
+                
+                {/* Pagination */}
+                {totalSkins > pageSize && (
+                  <Pagination className="my-6">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                      
+                      {getPaginationItems()}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => handlePageChange(currentPage + 1)} 
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
             )}
           </>
         )}

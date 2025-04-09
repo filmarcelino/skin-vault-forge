@@ -11,4 +11,12 @@ export interface Skin {
   price_cny?: number | null;
   price_rub?: number | null;
   statTrak?: boolean;
+  float?: number | null;
+}
+
+export interface PaginatedSkins {
+  skins: Skin[];
+  count: number;
+  page: number;
+  pageSize: number;
 }

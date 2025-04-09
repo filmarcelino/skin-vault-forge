@@ -13,11 +13,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Skin } from '@/types/skin';
+import { Skin, PaginatedSkins } from '@/types/skin';
 import SkinCard from '@/components/SkinCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AddSkinForm from '@/components/AddSkinForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationLink } from '@/components/ui/pagination';
+import { cacheSkins, getCachedSkins, getPaginationCacheKey } from '@/utils/skinCache';
 
 const Inventory = () => {
   const [skins, setSkins] = useState<Skin[]>([]);
@@ -27,9 +29,15 @@ const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredSkins, setFilteredSkins] = useState<Skin[]>([]);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
+  const [totalSkins, setTotalSkins] = useState(0);
+  const [activeTab, setActiveTab] = useState('all');
+  
   useEffect(() => {
-    fetchSkins();
-  }, []);
+    fetchSkins(currentPage, pageSize);
+  }, [currentPage, pageSize]);
   
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -44,15 +52,42 @@ const Inventory = () => {
     }
   }, [searchQuery, skins]);
   
-  const fetchSkins = async () => {
+  const fetchSkins = async (page: number, size: number, refreshCache: boolean = false) => {
     try {
       setLoading(true);
       
-      // Fetch skins from Supabase
+      // Check cache first (if not forced refresh)
+      const filters = { search: searchQuery, tab: activeTab };
+      const cacheKey = getPaginationCacheKey(page, size, filters);
+      
+      if (!refreshCache) {
+        const cachedData = getCachedSkins<PaginatedSkins>(cacheKey);
+        if (cachedData) {
+          setSkins(cachedData.skins);
+          setFilteredSkins(cachedData.skins);
+          setTotalSkins(cachedData.count);
+          setCurrentPage(cachedData.page);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Calculate pagination offset
+      const from = (page - 1) * size;
+      const to = from + size - 1;
+      
+      // Get total count first for pagination
+      const { count } = await supabase
+        .from('skins')
+        .select('*', { count: 'exact', head: true });
+      
+      setTotalSkins(count || 0);
+      
+      // Then fetch the current page of data
       const { data, error } = await supabase
         .from('skins')
         .select('*')
-        .limit(100);
+        .range(from, to);
       
       if (error) {
         throw new Error(error.message);
@@ -69,12 +104,25 @@ const Inventory = () => {
           exterior: skin.exterior || 'Factory New',
           price_usd: skin.price_usd,
           statTrak: Math.random() > 0.8, // Randomly assign StatTrak for now
+          float: skin.float,
         }));
         
         setSkins(formattedSkins);
         setFilteredSkins(formattedSkins);
+        
+        // Cache the results
+        const paginatedData: PaginatedSkins = {
+          skins: formattedSkins,
+          count: count || 0,
+          page,
+          pageSize: size
+        };
+        
+        cacheSkins(cacheKey, paginatedData);
       } else {
         toast.info("No skins found in database.");
+        setSkins([]);
+        setFilteredSkins([]);
       }
     } catch (err: any) {
       console.error("Error fetching skins:", err);
@@ -101,6 +149,49 @@ const Inventory = () => {
     toast.success("Skin added to inventory");
   };
   
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= Math.ceil((totalSkins || 0) / pageSize)) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setCurrentPage(1);
+  };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(totalSkins / pageSize);
+  
+  // Generate pagination numbers
+  const getPaginationItems = () => {
+    const items = [];
+    const maxPagesToShow = 5; // Maximum number of page numbers to show
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink 
+            onClick={() => handlePageChange(i)}
+            isActive={currentPage === i}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    return items;
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -112,6 +203,11 @@ const Inventory = () => {
             <p className="text-muted-foreground">
               Browse, search and manage your CS2 skin collection
             </p>
+            {totalSkins > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Total: {totalSkins} skins • Page {currentPage} of {totalPages}
+              </p>
+            )}
           </div>
           
           <Button 
@@ -122,7 +218,7 @@ const Inventory = () => {
           </Button>
         </div>
         
-        <Tabs defaultValue="all">
+        <Tabs defaultValue="all" onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="all">All Inventory</TabsTrigger>
             <TabsTrigger value="local">Local Collection</TabsTrigger>
@@ -176,20 +272,45 @@ const Inventory = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredSkins.map((skin) => (
-                  <SkinCard 
-                    key={skin.id}
-                    name={skin.name}
-                    weaponType={skin.weapon_type}
-                    image={skin.image_url}
-                    rarity={skin.rarity}
-                    wear={skin.exterior}
-                    price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                    statTrak={skin.statTrak}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredSkins.map((skin) => (
+                    <SkinCard 
+                      key={skin.id}
+                      name={skin.name}
+                      weaponType={skin.weapon_type}
+                      image={skin.image_url}
+                      rarity={skin.rarity}
+                      wear={skin.exterior}
+                      price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                      statTrak={skin.statTrak}
+                    />
+                  ))}
+                </div>
+                
+                {/* Pagination */}
+                {totalSkins > pageSize && (
+                  <Pagination className="my-6">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                      
+                      {getPaginationItems()}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => handlePageChange(currentPage + 1)} 
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
             )}
           </TabsContent>
           

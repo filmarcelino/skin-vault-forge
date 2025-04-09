@@ -11,23 +11,26 @@ import {
   X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Skin, PaginatedSkins } from '@/types/skin';
+import { Skin, UserSkin } from '@/types/skin';
 import SkinCard from '@/components/SkinCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AddSkinForm from '@/components/AddSkinForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationLink } from '@/components/ui/pagination';
-import { cacheSkins, getCachedSkins, getPaginationCacheKey } from '@/utils/skinCache';
+import { 
+  fetchUserInventory, 
+  addSkinToInventory, 
+  initializeDemoInventory 
+} from '@/utils/userInventory';
 
 const Inventory = () => {
-  const [skins, setSkins] = useState<Skin[]>([]);
+  const [skins, setSkins] = useState<UserSkin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredSkins, setFilteredSkins] = useState<Skin[]>([]);
+  const [filteredSkins, setFilteredSkins] = useState<UserSkin[]>([]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,8 +39,16 @@ const Inventory = () => {
   const [activeTab, setActiveTab] = useState('all');
   
   useEffect(() => {
-    fetchSkins(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    // Initialize demo inventory for development purposes
+    // In a real app with auth, this would be removed
+    initializeDemoInventory().then(() => {
+      fetchInventory(currentPage, pageSize, activeTab);
+    });
+  }, []);
+  
+  useEffect(() => {
+    fetchInventory(currentPage, pageSize, activeTab);
+  }, [currentPage, pageSize, activeTab]);
   
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -52,82 +63,22 @@ const Inventory = () => {
     }
   }, [searchQuery, skins]);
   
-  const fetchSkins = async (page: number, size: number, refreshCache: boolean = false) => {
+  const fetchInventory = async (page: number, size: number, source: string = 'all', refreshCache: boolean = false) => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Check cache first (if not forced refresh)
-      const filters = { search: searchQuery, tab: activeTab };
-      const cacheKey = getPaginationCacheKey(page, size, filters);
+      const filters = { search: searchQuery };
+      const result = await fetchUserInventory(page, size, source, filters, refreshCache);
       
-      if (!refreshCache) {
-        const cachedData = getCachedSkins<PaginatedSkins>(cacheKey);
-        if (cachedData) {
-          setSkins(cachedData.skins);
-          setFilteredSkins(cachedData.skins);
-          setTotalSkins(cachedData.count);
-          setCurrentPage(cachedData.page);
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // Calculate pagination offset
-      const from = (page - 1) * size;
-      const to = from + size - 1;
-      
-      // Get total count first for pagination
-      const { count } = await supabase
-        .from('skins')
-        .select('*', { count: 'exact', head: true });
-      
-      setTotalSkins(count || 0);
-      
-      // Then fetch the current page of data
-      const { data, error } = await supabase
-        .from('skins')
-        .select('*')
-        .range(from, to);
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data && data.length > 0) {
-        // Transform the data to match our SkinCard component props
-        const formattedSkins: Skin[] = data.map((skin) => ({
-          id: skin.id,
-          name: skin.name,
-          weapon_type: skin.weapon_type || 'Unknown',
-          image_url: skin.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-          rarity: (skin.rarity as 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband') || 'common',
-          exterior: skin.exterior || 'Factory New',
-          price_usd: skin.price_usd,
-          statTrak: Math.random() > 0.8, // Randomly assign StatTrak for now
-          float: skin.float,
-        }));
-        
-        setSkins(formattedSkins);
-        setFilteredSkins(formattedSkins);
-        
-        // Cache the results
-        const paginatedData: PaginatedSkins = {
-          skins: formattedSkins,
-          count: count || 0,
-          page,
-          pageSize: size
-        };
-        
-        cacheSkins(cacheKey, paginatedData);
-      } else {
-        toast.info("No skins found in database.");
-        setSkins([]);
-        setFilteredSkins([]);
-      }
+      setSkins(result.skins);
+      setFilteredSkins(result.skins);
+      setTotalSkins(result.count);
+      setCurrentPage(result.page);
     } catch (err: any) {
-      console.error("Error fetching skins:", err);
+      console.error("Error fetching inventory:", err);
       setError(err.message);
-      toast.error("Failed to load skins");
+      toast.error("Failed to load inventory");
     } finally {
       setLoading(false);
     }
@@ -141,12 +92,20 @@ const Inventory = () => {
     setSearchQuery('');
   };
   
-  const addSkin = (newSkin: Skin) => {
-    // In a real implementation, this would save to Supabase
-    setSkins(prev => [...prev, newSkin]);
-    setFilteredSkins(prev => [...prev, newSkin]);
-    setIsAddModalOpen(false);
-    toast.success("Skin added to inventory");
+  const addSkin = async (newSkin: Skin) => {
+    const result = await addSkinToInventory(newSkin, {
+      acquired_date: new Date().toISOString(),
+      acquisition_price: newSkin.price_usd || 0,
+      currency: 'USD',
+      notes: 'Added manually',
+      source: 'local'
+    });
+    
+    if (result) {
+      // Refresh the inventory with the new skin
+      fetchInventory(currentPage, pageSize, activeTab, true);
+      setIsAddModalOpen(false);
+    }
   };
   
   const handlePageChange = (newPage: number) => {
@@ -159,6 +118,7 @@ const Inventory = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setCurrentPage(1);
+    // This will trigger the useEffect to reload data
   };
   
   // Calculate total pages
@@ -263,7 +223,7 @@ const Inventory = () => {
               </div>
             ) : filteredSkins.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-lg text-muted-foreground">No skins found</p>
+                <p className="text-lg text-muted-foreground">No skins found in your inventory</p>
                 <Button 
                   onClick={() => setIsAddModalOpen(true)} 
                   className="mt-4"
@@ -276,13 +236,14 @@ const Inventory = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {filteredSkins.map((skin) => (
                     <SkinCard 
-                      key={skin.id}
+                      key={skin.collection_id}
                       name={skin.name}
                       weaponType={skin.weapon_type}
                       image={skin.image_url}
                       rarity={skin.rarity}
                       wear={skin.exterior}
-                      price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                      price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
+                             skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
                       statTrak={skin.statTrak}
                     />
                   ))}
@@ -315,15 +276,39 @@ const Inventory = () => {
           </TabsContent>
           
           <TabsContent value="local" className="mt-0">
-            <div className="text-center py-20">
-              <p className="text-lg text-muted-foreground">Your local collection will appear here</p>
-              <Button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="mt-4"
-              >
-                Add Skin to Local Collection
-              </Button>
-            </div>
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
+                <span className="ml-2">Loading local collection...</span>
+              </div>
+            ) : filteredSkins.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-lg text-muted-foreground">No skins found in your local collection</p>
+                <Button 
+                  onClick={() => setIsAddModalOpen(true)} 
+                  className="mt-4"
+                >
+                  Add Skin to Local Collection
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* For demo purposes, we're showing all skins in all tabs since we don't have "source" implemented yet */}
+                {filteredSkins.map((skin) => (
+                  <SkinCard 
+                    key={skin.collection_id}
+                    name={skin.name}
+                    weaponType={skin.weapon_type}
+                    image={skin.image_url}
+                    rarity={skin.rarity}
+                    wear={skin.exterior}
+                    price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
+                           skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                    statTrak={skin.statTrak}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="steam" className="mt-0">
@@ -343,7 +328,7 @@ const Inventory = () => {
           <DialogHeader>
             <DialogTitle>Add Skin to Inventory</DialogTitle>
           </DialogHeader>
-          <AddSkinForm onSubmit={addSkin} allSkins={skins} />
+          <AddSkinForm onSubmit={addSkin} allSkins={[]} />
         </DialogContent>
       </Dialog>
       

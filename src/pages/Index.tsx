@@ -6,18 +6,24 @@ import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, Loader2, ShoppingBag, Database, Cloud, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Skin, PaginatedSkins } from '@/types/skin';
+import { Skin, UserSkin } from '@/types/skin';
 import InventoryStatsCard from '@/components/InventoryStatsCard';
 import { Link } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationLink } from '@/components/ui/pagination';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  getUserInventoryStats, 
+  fetchUserInventory, 
+  initializeDemoInventory 
+} from '@/utils/userInventory';
 import { cacheSkins, getCachedSkins, getPaginationCacheKey } from '@/utils/skinCache';
 
 const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [skins, setSkins] = useState<Skin[]>([]);
+  const [userSkins, setUserSkins] = useState<UserSkin[]>([]);
+  const [featuredSkins, setFeaturedSkins] = useState<Skin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -35,12 +41,16 @@ const Index = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   
   useEffect(() => {
-    fetchStats();
+    // Initialize demo inventory for development purposes
+    // In a real app with auth, this would be removed
+    initializeDemoInventory().then(() => {
+      fetchStats();
+    });
   }, []);
   
   useEffect(() => {
     if (showSkinsSection) {
-      fetchSkins(currentPage, pageSize);
+      fetchUserFeaturedSkins(currentPage, pageSize);
     }
   }, [currentPage, pageSize, showSkinsSection]);
   
@@ -61,19 +71,10 @@ const Index = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
-  // Function to fetch just the stats for the cards without loading all skins
+  // Function to fetch inventory stats
   const fetchStats = async () => {
     try {
-      const { data: skinData, error: skinError } = await supabase
-        .from('skins')
-        .select('price_usd')
-        .limit(1000);
-      
-      if (skinError) {
-        throw new Error(skinError.message);
-      }
-      
-      // Get total number of skins in database
+      // Get total number of skins in database (master catalog)
       const { count, error: countError } = await supabase
         .from('skins')
         .select('*', { count: 'exact', head: true });
@@ -83,100 +84,87 @@ const Index = () => {
       }
       
       setApiSkinsCount(count || 0);
-      setTotalSkins(count || 0);
       
-      // Calculate stats for the cards
-      if (skinData && skinData.length > 0) {
-        const totalValue = skinData.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
-        setTotalStats({ count: count || 0, value: totalValue });
-        
-        // Mock data for the other cards - in a real app this would come from the database
-        setLocalStats({ count: Math.floor((count || 0) * 0.3), value: totalValue * 0.3 });
-        setSteamStats({ count: Math.floor((count || 0) * 0.7), value: totalValue * 0.7 });
-      }
+      // Get user's inventory stats
+      const stats = await getUserInventoryStats();
+      setTotalStats(stats.total);
+      setLocalStats(stats.local);
+      setSteamStats(stats.steam);
     } catch (err: any) {
       console.error("Error fetching stats:", err);
       toast.error("Failed to load inventory stats");
     }
   };
   
-  // Fetch skins with pagination
-  const fetchSkins = async (page: number, size: number, refreshCache: boolean = false) => {
+  // Fetch featured skins from user's collection
+  const fetchUserFeaturedSkins = async (page: number, size: number, refreshCache: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Check cache first (if not forced refresh)
-      const cacheKey = getPaginationCacheKey(page, size, filters);
+      // Fetch user's inventory
+      const result = await fetchUserInventory(page, size, 'all', filters, refreshCache);
+      setUserSkins(result.skins);
+      setTotalSkins(result.count);
       
-      if (!refreshCache) {
-        const cachedData = getCachedSkins<PaginatedSkins>(cacheKey);
-        if (cachedData) {
-          setSkins(cachedData.skins);
-          setTotalSkins(cachedData.count);
-          setCurrentPage(cachedData.page);
-          setLoading(false);
-          setShowSkinsSection(true);
-          return;
-        }
-      }
+      // Also fetch some featured skins from the master catalog
+      await fetchFeaturedMasterSkins();
       
-      // Calculate pagination offset
-      const from = (page - 1) * size;
-      const to = from + size - 1;
-      
-      // Get total count first for pagination
-      const { count } = await supabase
-        .from('skins')
-        .select('*', { count: 'exact', head: true });
-      
-      setTotalSkins(count || 0);
-      
-      // Then fetch the current page of data
-      const { data, error } = await supabase
-        .from('skins')
-        .select('*')
-        .range(from, to);
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data && data.length > 0) {
-        const formattedSkins: Skin[] = data.map((skin) => ({
-          id: skin.id,
-          name: skin.name,
-          weapon_type: skin.weapon_type || 'Unknown',
-          image_url: skin.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-          rarity: (skin.rarity as 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband') || 'common',
-          exterior: skin.exterior || 'Factory New',
-          price_usd: skin.price_usd,
-          statTrak: Math.random() > 0.8,
-          float: skin.float,
-        }));
-        
-        setSkins(formattedSkins);
-        setShowSkinsSection(true);
-        
-        // Cache the results
-        const paginatedData: PaginatedSkins = {
-          skins: formattedSkins,
-          count: count || 0,
-          page,
-          pageSize: size
-        };
-        
-        cacheSkins(cacheKey, paginatedData);
-      } else {
-        toast.info("No skins found in database. You can import them from the API.");
-        setSkins([]);
-      }
+      setShowSkinsSection(true);
     } catch (err: any) {
       console.error("Error fetching skins:", err);
       setError(err.message);
       toast.error("Failed to load skins");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Fetch featured skins from the master catalog
+  const fetchFeaturedMasterSkins = async () => {
+    try {
+      // Check cache first
+      const cacheKey = 'featured_master_skins';
+      const cachedData = getCachedSkins<Skin[]>(cacheKey);
+      
+      if (cachedData) {
+        setFeaturedSkins(cachedData);
+        return;
+      }
+      
+      // Fetch some premium skins to showcase
+      const { data, error } = await supabase
+        .from('skins')
+        .select('*')
+        .in('rarity', ['legendary', 'ancient', 'contraband'])
+        .order('price_usd', { ascending: false })
+        .limit(4);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data && data.length > 0) {
+        const formattedSkins: Skin[] = data.map(skin => ({
+          id: skin.id,
+          name: skin.name,
+          weapon_type: skin.weapon_type || 'Unknown',
+          image_url: skin.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+          rarity: (skin.rarity as any) || 'common',
+          exterior: skin.exterior || 'Factory New',
+          price_usd: skin.price_usd,
+          price_brl: skin.price_brl,
+          price_cny: skin.price_cny,
+          price_rub: skin.price_rub,
+          statTrak: Math.random() > 0.8,
+          float: skin.float,
+        }));
+        
+        setFeaturedSkins(formattedSkins);
+        cacheSkins(cacheKey, formattedSkins);
+      }
+    } catch (error) {
+      console.error("Error fetching featured skins:", error);
     }
   };
   
@@ -192,8 +180,12 @@ const Index = () => {
       }
       
       toast.success("Successfully imported skins from API");
-      await fetchSkins(1, pageSize, true); // refresh with first page
       await fetchStats(); // Refresh stats after import
+      
+      // If we're showing skins, refresh them
+      if (showSkinsSection) {
+        await fetchUserFeaturedSkins(1, pageSize, true);
+      }
     } catch (err: any) {
       console.error("Error importing skins:", err);
       setError("Failed to import skins from API. Please try again later.");
@@ -205,7 +197,7 @@ const Index = () => {
   
   const handleLoadSkins = () => {
     if (!showSkinsSection) {
-      fetchSkins(currentPage, pageSize);
+      fetchUserFeaturedSkins(currentPage, pageSize);
     }
   };
   
@@ -285,7 +277,7 @@ const Index = () => {
         </div>
         
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold mb-4">Featured Skins</h2>
+          <h2 className="text-2xl font-bold mb-4">Your Inventory</h2>
           <Link to="/inventory">
             <Button variant="outline" size="sm">
               Manage Inventory
@@ -304,7 +296,7 @@ const Index = () => {
             </p>
             {showSkinsSection && totalSkins > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                Showing page {currentPage} of {totalPages}
+                Showing {userSkins.length} of {totalSkins} skins in your collection
               </p>
             )}
           </div>
@@ -319,7 +311,7 @@ const Index = () => {
                 disabled={loading}
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Show Skins
+                Show Your Skins
               </Button>
             )}
             
@@ -342,66 +334,103 @@ const Index = () => {
         
         {showSkinsSection && (
           <>
-            <CategoryTabs />
-            <FilterBar />
+            {userSkins.length === 0 && !loading ? (
+              <div className="text-center py-20">
+                <p className="text-lg text-muted-foreground">Your inventory is empty</p>
+                <Link to="/inventory">
+                  <Button className="mt-4">
+                    Add Skins to Inventory
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <>
+                {/* Display user's skins if available */}
+                {userSkins.length > 0 && !loading && (
+                  <>
+                    <CategoryTabs />
+                    <FilterBar />
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
+                      {userSkins.map((skin) => (
+                        <SkinCard 
+                          key={skin.collection_id}
+                          name={skin.name}
+                          weaponType={skin.weapon_type}
+                          image={skin.image_url}
+                          rarity={skin.rarity}
+                          wear={skin.exterior}
+                          price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
+                                 skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                          statTrak={skin.statTrak}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Pagination for user skins */}
+                    {totalSkins > pageSize && (
+                      <Pagination className="my-6">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                            />
+                          </PaginationItem>
+                          
+                          {getPaginationItems()}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => handlePageChange(currentPage + 1)} 
+                              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
+                )}
+                
+                {/* Featured skins section */}
+                {featuredSkins.length > 0 && (
+                  <>
+                    <div className="mt-12 mb-4">
+                      <h2 className="text-2xl font-bold">Featured Skins</h2>
+                      <p className="text-muted-foreground">Premium skins from our catalog</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                      {featuredSkins.map((skin) => (
+                        <SkinCard 
+                          key={skin.id}
+                          name={skin.name}
+                          weaponType={skin.weapon_type}
+                          image={skin.image_url}
+                          rarity={skin.rarity}
+                          wear={skin.exterior}
+                          price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                          statTrak={skin.statTrak}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
             
-            {loading ? (
+            {loading && (
               <div className="flex justify-center items-center py-20">
                 <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
                 <span className="ml-2">Loading skins...</span>
               </div>
-            ) : error ? (
+            )}
+            
+            {error && (
               <Alert variant="destructive" className="my-4">
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
-            ) : skins.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-lg text-muted-foreground">No skins found</p>
-                <Button onClick={fetchSkinsFromAPI} className="mt-4">
-                  Import Skins
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
-                  {skins.map((skin) => (
-                    <SkinCard 
-                      key={skin.id}
-                      name={skin.name}
-                      weaponType={skin.weapon_type}
-                      image={skin.image_url}
-                      rarity={skin.rarity}
-                      wear={skin.exterior}
-                      price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                      statTrak={skin.statTrak}
-                    />
-                  ))}
-                </div>
-                
-                {/* Pagination */}
-                {totalSkins > pageSize && (
-                  <Pagination className="my-6">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                        />
-                      </PaginationItem>
-                      
-                      {getPaginationItems()}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => handlePageChange(currentPage + 1)} 
-                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                )}
-              </>
             )}
           </>
         )}

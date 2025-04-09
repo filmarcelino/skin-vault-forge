@@ -9,9 +9,9 @@ interface CacheItem<T> {
   timestamp: number;
 }
 
-// Save skins data to localStorage with expiry
-export const cacheSkins = (key: string, data: any): void => {
-  const cacheData: CacheItem<any> = {
+// Save data to localStorage with expiry
+export const cacheSkins = <T>(key: string, data: T): void => {
+  const cacheData: CacheItem<T> = {
     data,
     timestamp: Date.now(),
   };
@@ -23,7 +23,7 @@ export const cacheSkins = (key: string, data: any): void => {
   }
 };
 
-// Get cached skins data if not expired
+// Get cached data if not expired
 export const getCachedSkins = <T>(key: string): T | null => {
   try {
     const cachedData = localStorage.getItem(key);
@@ -59,4 +59,21 @@ export const getPaginationCacheKey = (
 ): string => {
   const filterString = filters ? JSON.stringify(filters) : '';
   return `skins_page_${page}_size_${pageSize}_${filterString}`;
+};
+
+// Clear all skin-related caches
+export const clearAllSkinCaches = (): void => {
+  // Get all keys from localStorage
+  Object.keys(localStorage).forEach(key => {
+    // Only clear keys related to skins
+    if (
+      key.startsWith('skins_') || 
+      key.startsWith('user_inventory_') ||
+      key.includes('featured_')
+    ) {
+      localStorage.removeItem(key);
+    }
+  });
+  
+  console.log('All skin caches cleared');
 };

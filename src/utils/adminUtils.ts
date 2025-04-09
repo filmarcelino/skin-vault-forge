@@ -14,12 +14,9 @@ export const checkAdminStatus = async (): Promise<boolean> => {
     const userId = session.user.id;
     
     // Check if user has admin role in the user_roles table
+    // Using rpc workaround since user_roles is not in the TypeScript types yet
     const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
+      .rpc('has_admin_role', { user_id: userId });
     
     if (error) {
       console.error('Error checking admin status:', error);
@@ -39,22 +36,11 @@ export const checkAdminStatus = async (): Promise<boolean> => {
  */
 export const grantAdminRole = async (userId: string): Promise<boolean> => {
   try {
-    // Check if the role already exists
-    const { data: existingRole } = await supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
+    // Using raw query workaround since user_roles is not in the TypeScript types yet
+    const { error } = await supabase
+      .rpc('add_admin_role', { user_id: userId });
     
-    // If role doesn't exist, add it
-    if (!existingRole) {
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' });
-      
-      if (error) throw error;
-    }
+    if (error) throw error;
     
     return true;
   } catch (error) {
@@ -69,11 +55,9 @@ export const grantAdminRole = async (userId: string): Promise<boolean> => {
  */
 export const revokeAdminRole = async (userId: string): Promise<boolean> => {
   try {
+    // Using raw query workaround since user_roles is not in the TypeScript types yet
     const { error } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId)
-      .eq('role', 'admin');
+      .rpc('remove_admin_role', { user_id: userId });
     
     if (error) throw error;
     

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Check, X, Shield, ShieldOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { grantAdminRole, revokeAdminRole } from '@/utils/adminUtils';
 
 type User = {
   id: string;
@@ -45,16 +46,14 @@ const AdminUserManagement = () => {
 
       if (usersError) throw usersError;
 
-      // Fetch admin roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .eq('role', 'admin');
+      // Fetch admin roles using the custom RPC function
+      const { data: adminRolesData, error: rolesError } = await supabase
+        .rpc('get_all_admin_users');
 
       if (rolesError) throw rolesError;
 
       // Create a set of admin user IDs for quick lookup
-      const adminUserIds = new Set(rolesData.map(role => role.user_id));
+      const adminUserIds = new Set(adminRolesData || []);
 
       // Combine the data
       const combinedUsers = usersData.map(user => ({
@@ -79,20 +78,12 @@ const AdminUserManagement = () => {
     try {
       if (isCurrentlyAdmin) {
         // Remove admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', 'admin');
-
-        if (error) throw error;
+        const success = await revokeAdminRole(userId);
+        if (!success) throw new Error('Failed to revoke admin role');
       } else {
         // Add admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: 'admin' });
-
-        if (error) throw error;
+        const success = await grantAdminRole(userId);
+        if (!success) throw new Error('Failed to grant admin role');
       }
 
       // Update local state

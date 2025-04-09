@@ -1,4 +1,6 @@
+
 import { Skin, PaginatedSkins } from '@/types/skin';
+import { supabase } from '@/integrations/supabase/client';
 
 // Cache expiration time (in minutes)
 const CACHE_EXPIRY = 30;

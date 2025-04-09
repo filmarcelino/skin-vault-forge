@@ -26,7 +26,6 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalSkins, setTotalSkins] = useState(0);
@@ -40,8 +39,6 @@ const Index = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   
   useEffect(() => {
-    // Initialize demo inventory for development purposes
-    // In a real app with auth, this would be removed
     initializeDemoInventory().then(() => {
       fetchStats();
     });
@@ -70,10 +67,8 @@ const Index = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
-  // Function to fetch inventory stats
   const fetchStats = async () => {
     try {
-      // Get total number of skins in database (master catalog)
       const { count, error: countError } = await supabase
         .from('skins')
         .select('*', { count: 'exact', head: true });
@@ -84,7 +79,6 @@ const Index = () => {
       
       setApiSkinsCount(count || 0);
       
-      // Get user's inventory stats
       const stats = await getUserInventoryStats();
       setTotalStats(stats.total);
       setLocalStats(stats.local);
@@ -95,18 +89,15 @@ const Index = () => {
     }
   };
   
-  // Fetch featured skins from user's collection
   const fetchUserFeaturedSkins = async (page: number, size: number, refreshCache: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch user's inventory
       const result = await fetchUserInventory(page, size, 'all', filters, refreshCache);
       setUserSkins(result.skins);
       setTotalSkins(result.count);
       
-      // Also fetch some featured skins from the master catalog
       await fetchFeaturedMasterSkins();
       
       setShowSkinsSection(true);
@@ -119,10 +110,8 @@ const Index = () => {
     }
   };
   
-  // Fetch featured skins from the master catalog
   const fetchFeaturedMasterSkins = async () => {
     try {
-      // Check cache first
       const cacheKey = 'featured_master_skins';
       const cachedData = getCachedSkins<Skin[]>(cacheKey);
       
@@ -131,7 +120,6 @@ const Index = () => {
         return;
       }
       
-      // Fetch some premium skins to showcase
       const { data, error } = await supabase
         .from('skins')
         .select('*')
@@ -179,9 +167,8 @@ const Index = () => {
       }
       
       toast.success("Successfully imported skins from API");
-      await fetchStats(); // Refresh stats after import
+      await fetchStats();
       
-      // If we're showing skins, refresh them
       if (showSkinsSection) {
         await fetchUserFeaturedSkins(1, pageSize, true);
       }
@@ -207,13 +194,11 @@ const Index = () => {
     }
   };
   
-  // Calculate total pages
   const totalPages = Math.ceil(totalSkins / pageSize);
   
-  // Generate pagination numbers
   const getPaginationItems = () => {
     const items = [];
-    const maxPagesToShow = 5; // Maximum number of page numbers to show
+    const maxPagesToShow = 5;
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
@@ -344,7 +329,6 @@ const Index = () => {
               </div>
             ) : (
               <>
-                {/* Display user's skins if available */}
                 {userSkins.length > 0 && !loading && (
                   <>
                     <CategoryTabs />
@@ -354,19 +338,12 @@ const Index = () => {
                       {userSkins.map((skin) => (
                         <SkinCard 
                           key={skin.collection_id}
-                          name={skin.name}
-                          weaponType={skin.weapon_type}
-                          image={skin.image_url}
-                          rarity={skin.rarity}
-                          wear={skin.exterior}
-                          price={skin.acquisition_price ? `$${skin.acquisition_price.toFixed(2)}` : 
-                                 skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                          statTrak={skin.statTrak}
+                          skin={skin}
+                          showActions={false}
                         />
                       ))}
                     </div>
                     
-                    {/* Pagination for user skins */}
                     {totalSkins > pageSize && (
                       <Pagination className="my-6">
                         <PaginationContent>
@@ -391,7 +368,6 @@ const Index = () => {
                   </>
                 )}
                 
-                {/* Featured skins section */}
                 {featuredSkins.length > 0 && (
                   <>
                     <div className="mt-12 mb-4">
@@ -403,13 +379,11 @@ const Index = () => {
                       {featuredSkins.map((skin) => (
                         <SkinCard 
                           key={skin.id}
-                          name={skin.name}
-                          weaponType={skin.weapon_type}
-                          image={skin.image_url}
-                          rarity={skin.rarity}
-                          wear={skin.exterior}
-                          price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                          statTrak={skin.statTrak}
+                          skin={{
+                            ...skin,
+                            collection_id: skin.id
+                          }}
+                          showActions={false}
                         />
                       ))}
                     </div>

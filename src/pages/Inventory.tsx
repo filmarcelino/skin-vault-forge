@@ -153,6 +153,18 @@ const Inventory = () => {
     return items;
   };
   
+  const handleDeleteSkin = async (id: string) => {
+    try {
+      // In a real app, this would call an API to delete the skin
+      toast.info("Delete functionality will be implemented soon");
+      // For now, we can just refresh the data
+      fetchInventory(currentPage, pageSize, activeTab, true);
+    } catch (err: any) {
+      console.error("Error deleting skin:", err);
+      toast.error("Failed to delete skin");
+    }
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

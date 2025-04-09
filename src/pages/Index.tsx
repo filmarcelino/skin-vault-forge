@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import SkinCard from '@/components/SkinCard';
@@ -9,18 +8,7 @@ import { ArrowUp, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-
-// Define the skin type based on our database schema
-interface Skin {
-  id: string;
-  name: string;
-  weapon_type: string;
-  image_url: string;
-  rarity: 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband';
-  exterior?: string;
-  price_usd?: number | null;
-  statTrak?: boolean;
-}
+import { Skin } from '@/types/skin';
 
 const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);

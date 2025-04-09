@@ -245,8 +245,14 @@ const Inventory = () => {
       
       // Handle array filters (rarities, exteriors, weaponTypes)
       if (Array.isArray(updated[key]) && value) {
-        // Fix the type issue here - explicitly cast to string[]
-        updated[key] = (updated[key] as string[]).filter(item => item !== value);
+        // Fix the type issue by using a proper type cast
+        if (key === 'rarities') {
+          updated.rarities = updated.rarities.filter(item => item !== value);
+        } else if (key === 'exteriors') {
+          updated.exteriors = updated.exteriors.filter(item => item !== value);
+        } else if (key === 'weaponTypes') {
+          updated.weaponTypes = updated.weaponTypes.filter(item => item !== value);
+        }
       } 
       // Handle boolean, string, number filters
       else {

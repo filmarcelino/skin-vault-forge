@@ -108,6 +108,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_admin: boolean | null
           steam_id: string | null
           username: string | null
         }
@@ -116,6 +117,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id: string
+          is_admin?: boolean | null
           steam_id?: string | null
           username?: string | null
         }
@@ -124,6 +126,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_admin?: boolean | null
           steam_id?: string | null
           username?: string | null
         }
@@ -134,7 +137,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_column_exists: {
+        Args: { table_name: string; column_name: string }
+        Returns: boolean
+      }
+      create_check_column_exists_function: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

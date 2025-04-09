@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BookmarkIcon, Trash2 } from 'lucide-react';
 import { FilterOptions } from './AdvancedFilterDrawer';
+import { toast } from 'sonner';
 
 interface QuickSearch {
   id: string;
@@ -28,7 +29,12 @@ const QuickSearchDropdown = ({ onSelectSearch }: QuickSearchDropdownProps) => {
   useEffect(() => {
     const saved = localStorage.getItem('quickSearches');
     if (saved) {
-      setSavedSearches(JSON.parse(saved));
+      try {
+        setSavedSearches(JSON.parse(saved));
+      } catch (error) {
+        console.error('Error parsing saved searches', error);
+        localStorage.removeItem('quickSearches');
+      }
     }
   }, []);
   
@@ -37,6 +43,7 @@ const QuickSearchDropdown = ({ onSelectSearch }: QuickSearchDropdownProps) => {
     const updatedSearches = savedSearches.filter(s => s.id !== searchId);
     setSavedSearches(updatedSearches);
     localStorage.setItem('quickSearches', JSON.stringify(updatedSearches));
+    toast.success('Search removed');
   };
   
   if (savedSearches.length === 0) return null;

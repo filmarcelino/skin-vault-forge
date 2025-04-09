@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -7,15 +7,32 @@ import { useToast } from '@/hooks/use-toast';
 const AuthCallback = () => {
   const [loading, setLoading] = useState(true);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function handleAuthCallback() {
       try {
         console.log("Auth callback initiated");
-        // Check if we have session data in URL (from our custom Steam auth)
+        // Check if we have an error parameter (from failed login)
         const searchParams = new URLSearchParams(location.search);
+        const errorParam = searchParams.get('error');
+        
+        if (errorParam) {
+          console.error("Login error from URL:", errorParam);
+          setError(errorParam);
+          toast({
+            title: 'Authentication failed',
+            description: errorParam,
+            variant: 'destructive',
+          });
+          setTimeout(() => navigate('/'), 3000);
+          return;
+        }
+        
+        // Check if we have session data in URL (from our custom Steam auth)
         const sessionParam = searchParams.get('session');
         
         if (sessionParam) {
@@ -42,6 +59,10 @@ const AuthCallback = () => {
                 title: 'Login successful',
                 description: 'You have been successfully signed in via Steam.',
               });
+              
+              // Get user data to confirm login
+              const { data: userData } = await supabase.auth.getUser();
+              console.log("Logged in user:", userData.user);
               
               setRedirectTo('/');
               return;
@@ -110,7 +131,7 @@ const AuthCallback = () => {
     }
 
     handleAuthCallback();
-  }, [toast, location.search]);
+  }, [toast, location.search, navigate]);
 
   const updateUserWithSteamInfo = async (userId: string, steamId: string) => {
     try {
@@ -151,11 +172,33 @@ const AuthCallback = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="bg-destructive/10 text-destructive p-4 rounded-md max-w-md text-center">
+          <h2 className="text-xl font-bold mb-2">Authentication Failed</h2>
+          <p>{error}</p>
+          <button 
+            className="mt-4 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
+            onClick={() => navigate('/')}
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (redirectTo) {
     return <Navigate to={redirectTo} replace />;
   }
 
-  return null;
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="mt-4 text-muted-foreground">Redirecting...</p>
+    </div>
+  );
 };
 
 export default AuthCallback;

@@ -39,7 +39,6 @@ const SteamLoginButton = () => {
         description: error.message || 'Failed to connect with Steam. Please try again.',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -47,7 +46,7 @@ const SteamLoginButton = () => {
   return (
     <Button 
       onClick={handleSteamLogin}
-      className="bg-[#171a21] hover:bg-[#2a475e] text-white"
+      className="bg-[#171a21] hover:bg-[#2a475e] text-white w-full"
       disabled={isLoading}
     >
       {isLoading ? (

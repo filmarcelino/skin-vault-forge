@@ -73,22 +73,26 @@ serve(async (req) => {
     let userId;
     
     if (existingUsers) {
-      // User exists, generate a new session
+      // User exists, use existing user ID
       console.log(`Existing user found with id: ${existingUsers.id}`);
       userId = existingUsers.id;
     } else {
       // Create a new user with Steam data
       console.log('Creating new user with Steam data');
+      
+      // Generate a random email that won't conflict
+      const randomEmail = `${steamId}_${Math.random().toString(36).substring(2)}@steam.placeholder`;
+      
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
-        email: `${steamId}@steam.placeholder`,
+        email: randomEmail,
         password: crypto.randomUUID(),
+        email_confirm: true,
         user_metadata: {
           steam_id: steamId,
           username: steamUser.personaname,
           avatar_url: steamUser.avatarfull,
           provider: 'steam',
-        },
-        email_confirm: true,
+        }
       });
       
       if (createError) {
@@ -99,20 +103,22 @@ serve(async (req) => {
       userId = authUser.user.id;
       console.log(`New user created with id: ${userId}`);
       
-      // Update users table with Steam information
-      console.log('Updating users table with Steam information');
-      const { error: updateError } = await supabase
+      // Insert into users table
+      const { error: insertError } = await supabase
         .from('users')
-        .update({
+        .insert({
+          id: userId,
           steam_id: steamId,
           username: steamUser.personaname,
           avatar_url: steamUser.avatarfull,
-        })
-        .eq('id', userId);
+          email: randomEmail,
+          is_admin: false
+        });
         
-      if (updateError) {
-        console.error(`Error updating user with Steam data: ${updateError.message}`);
-        // Continue anyway, this is not critical
+      if (insertError) {
+        console.error(`Error inserting user: ${insertError.message}`);
+        // Continue anyway, but log the error
+        console.log(`Will continue with session creation despite error`);
       }
     }
     
@@ -120,9 +126,6 @@ serve(async (req) => {
     console.log('Creating session for user');
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
       user_id: userId,
-      properties: {
-        provider: 'steam',
-      },
     });
     
     if (sessionError) {

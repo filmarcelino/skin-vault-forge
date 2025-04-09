@@ -2,27 +2,27 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Checks if the current user has admin permissions
- * @returns Promise<boolean> True if user is admin, false otherwise
+ * Check if the current user has admin status
  */
-export const checkAdminStatus = async (): Promise<boolean> => {
+export const checkAdminStatus = async () => {
   try {
-    // First check if user is authenticated
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return false;
 
     const userId = session.user.id;
     
-    // Check if user has admin role using the RPC function
     const { data, error } = await supabase
-      .rpc('has_admin_role', { user_id: userId }) as unknown as { data: boolean | null, error: any };
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
     
     if (error) {
       console.error('Error checking admin status:', error);
       return false;
     }
     
-    return !!data; // Return true if data exists (user is admin)
+    return data?.is_admin === true;
   } catch (error) {
     console.error('Error in checkAdminStatus:', error);
     return false;
@@ -30,39 +30,47 @@ export const checkAdminStatus = async (): Promise<boolean> => {
 };
 
 /**
- * Grants admin role to a user
- * @param userId The ID of the user to grant admin role to
+ * Get list of all users
  */
-export const grantAdminRole = async (userId: string): Promise<boolean> => {
+export const getAllUsers = async () => {
   try {
-    // Use RPC function to add admin role
-    const { error } = await supabase
-      .rpc('add_admin_role', { user_id: userId }) as unknown as { data: null, error: any };
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
     
-    return true;
+    return data || [];
   } catch (error) {
-    console.error('Error granting admin role:', error);
-    return false;
+    console.error('Error in getAllUsers:', error);
+    return [];
   }
 };
 
 /**
- * Revokes admin role from a user
- * @param userId The ID of the user to revoke admin role from
+ * Toggle admin status for a user
  */
-export const revokeAdminRole = async (userId: string): Promise<boolean> => {
+export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
   try {
-    // Use RPC function to remove admin role
-    const { error } = await supabase
-      .rpc('remove_admin_role', { user_id: userId }) as unknown as { data: null, error: any };
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_admin: isAdmin })
+      .eq('id', userId)
+      .select()
+      .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating admin status:', error);
+      return null;
+    }
     
-    return true;
+    return data;
   } catch (error) {
-    console.error('Error revoking admin role:', error);
-    return false;
+    console.error('Error in toggleAdminStatus:', error);
+    return null;
   }
 };

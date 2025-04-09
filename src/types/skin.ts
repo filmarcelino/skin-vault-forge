@@ -7,5 +7,8 @@ export interface Skin {
   rarity: 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband';
   exterior?: string;
   price_usd?: number | null;
+  price_brl?: number | null;
+  price_cny?: number | null;
+  price_rub?: number | null;
   statTrak?: boolean;
 }

@@ -1,3 +1,4 @@
+
 // fetch-cs2-skins/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -63,6 +64,27 @@ Deno.serve(async (req) => {
     const skinsData = await response.json();
     console.log(`Fetched ${skinsData.length} skins from API`);
     
+    // First check if we already have skins in the database
+    const { count } = await supabase
+      .from('skins')
+      .select('*', { count: 'exact', head: true });
+      
+    if (count && count > 0) {
+      console.log(`Found ${count} existing skins in database`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Database already contains ${count} skins. No import needed.`,
+          existing_count: count
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
+    }
+    
     // Process the data to match our schema
     const processedSkins = processSkinData(skinsData);
     
@@ -90,7 +112,11 @@ Deno.serve(async (req) => {
     console.log(`Successfully inserted ${processedSkins.length} skins into the database`);
     
     return new Response(
-      JSON.stringify({ success: true, message: `Imported ${processedSkins.length} skins` }),
+      JSON.stringify({ 
+        success: true, 
+        message: `Imported ${processedSkins.length} skins`,
+        imported_count: processedSkins.length
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200

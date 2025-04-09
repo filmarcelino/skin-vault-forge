@@ -18,11 +18,19 @@ import {
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ScrollArea } from './ui/scroll-area';
 
 interface AddSkinFormProps {
   onSubmit: (skin: Skin) => void;
   allSkins: Skin[];
 }
+
+const currencySymbols: Record<string, string> = {
+  USD: '$',
+  BRL: 'R$',
+  CNY: '¥',
+  RUB: '₽'
+};
 
 const AddSkinForm: React.FC<AddSkinFormProps> = ({ onSubmit, allSkins }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,10 +43,8 @@ const AddSkinForm: React.FC<AddSkinFormProps> = ({ onSubmit, allSkins }) => {
   const [exterior, setExterior] = useState<string>('Factory New');
   const [isStatTrak, setIsStatTrak] = useState<boolean>(false);
   
-  const [priceUSD, setPriceUSD] = useState<string>('');
-  const [priceBRL, setPriceBRL] = useState<string>('');
-  const [priceCNY, setPriceCNY] = useState<string>('');
-  const [priceRUB, setPriceRUB] = useState<string>('');
+  const [priceValue, setPriceValue] = useState<string>('');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('USD');
   
   // Search for skins as user types
   useEffect(() => {
@@ -112,7 +118,8 @@ const AddSkinForm: React.FC<AddSkinFormProps> = ({ onSubmit, allSkins }) => {
     
     // Pre-fill price in USD if available
     if (skin.price_usd) {
-      setPriceUSD(skin.price_usd.toString());
+      setPriceValue(skin.price_usd.toString());
+      setSelectedCurrency('USD');
     }
   };
   
@@ -123,6 +130,10 @@ const AddSkinForm: React.FC<AddSkinFormProps> = ({ onSubmit, allSkins }) => {
     }
   };
   
+  const handleCurrencyChange = (currency: string) => {
+    setSelectedCurrency(currency);
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -131,214 +142,196 @@ const AddSkinForm: React.FC<AddSkinFormProps> = ({ onSubmit, allSkins }) => {
       return;
     }
     
+    // Create new skin object with chosen currency price
     const newSkin: Skin = {
       ...selectedSkin,
       exterior,
-      price_usd: priceUSD ? parseFloat(priceUSD) : null,
+      price_usd: selectedCurrency === 'USD' ? parseFloat(priceValue) || null : null,
       statTrak: isStatTrak,
     };
+    
+    // Add other currency prices if needed
+    if (selectedCurrency === 'BRL') {
+      newSkin.price_brl = parseFloat(priceValue) || null;
+    } else if (selectedCurrency === 'CNY') {
+      newSkin.price_cny = parseFloat(priceValue) || null;
+    } else if (selectedCurrency === 'RUB') {
+      newSkin.price_rub = parseFloat(priceValue) || null;
+    }
     
     onSubmit(newSkin);
   };
   
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-      <div className="space-y-2">
-        <Label htmlFor="skin-search">Skin Name</Label>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="skin-search"
-            placeholder="Search for a skin..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="pl-9"
-          />
-          {searching && (
-            <div className="absolute right-2 top-2">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          
-          {/* Search Results Dropdown */}
-          {showResults && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-[300px] overflow-y-auto">
-              <div className="p-1">
-                {searchResults.map((skin) => (
-                  <div
-                    key={skin.id}
-                    onClick={() => handleSelectSkin(skin)}
-                    className="flex items-center gap-3 p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
-                  >
-                    <div className="h-12 w-12 relative overflow-hidden rounded-md flex-shrink-0 border border-border/50">
-                      <img
-                        src={skin.image_url}
-                        alt={skin.name}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className={cn(
-                        "absolute inset-0 opacity-20",
-                        skin.rarity === 'common' && "bg-gradient-to-br from-rarity-common/20 to-transparent",
-                        skin.rarity === 'uncommon' && "bg-gradient-to-br from-rarity-uncommon/20 to-transparent",
-                        skin.rarity === 'rare' && "bg-gradient-to-br from-rarity-rare/20 to-transparent",
-                        skin.rarity === 'mythical' && "bg-gradient-to-br from-rarity-mythical/20 to-transparent",
-                        skin.rarity === 'legendary' && "bg-gradient-to-br from-rarity-legendary/20 to-transparent",
-                        skin.rarity === 'ancient' && "bg-gradient-to-br from-rarity-ancient/20 to-transparent",
-                        skin.rarity === 'contraband' && "bg-gradient-to-br from-rarity-contraband/20 to-transparent",
-                      )}/>
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium text-sm truncate">{skin.name}</h4>
-                        <span className="text-xs text-neon-purple font-medium">
-                          {skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-muted-foreground">{skin.weapon_type}</span>
-                        <Badge className={cn(
-                          "text-xs",
-                          skin.rarity === 'common' && "bg-rarity-common text-black hover:bg-rarity-common/80",
-                          skin.rarity === 'uncommon' && "bg-rarity-uncommon hover:bg-rarity-uncommon/80",
-                          skin.rarity === 'rare' && "bg-rarity-rare hover:bg-rarity-rare/80",
-                          skin.rarity === 'mythical' && "bg-rarity-mythical hover:bg-rarity-mythical/80",
-                          skin.rarity === 'legendary' && "bg-rarity-legendary hover:bg-rarity-legendary/80",
-                          skin.rarity === 'ancient' && "bg-rarity-ancient hover:bg-rarity-ancient/80",
-                          skin.rarity === 'contraband' && "bg-rarity-contraband hover:bg-rarity-contraband/80 text-black",
-                        )}>
-                          {skin.rarity}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+    <ScrollArea className="max-h-[80vh] pr-4">
+      <form onSubmit={handleSubmit} className="space-y-6 pt-2">
+        <div className="space-y-2">
+          <Label htmlFor="skin-search">Skin Name</Label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="skin-search"
+              placeholder="Search for a skin..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="pl-9"
+            />
+            {searching && (
+              <div className="absolute right-2 top-2">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            </div>
-          )}
+            )}
+            
+            {/* Search Results Dropdown */}
+            {showResults && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-[300px] overflow-y-auto">
+                <div className="p-1">
+                  {searchResults.map((skin) => (
+                    <div
+                      key={skin.id}
+                      onClick={() => handleSelectSkin(skin)}
+                      className="flex items-center gap-3 p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
+                    >
+                      <div className="h-12 w-12 relative overflow-hidden rounded-md flex-shrink-0 border border-border/50">
+                        <img
+                          src={skin.image_url}
+                          alt={skin.name}
+                          className="h-full w-full object-cover"
+                        />
+                        <div className={cn(
+                          "absolute inset-0 opacity-20",
+                          skin.rarity === 'common' && "bg-gradient-to-br from-rarity-common/20 to-transparent",
+                          skin.rarity === 'uncommon' && "bg-gradient-to-br from-rarity-uncommon/20 to-transparent",
+                          skin.rarity === 'rare' && "bg-gradient-to-br from-rarity-rare/20 to-transparent",
+                          skin.rarity === 'mythical' && "bg-gradient-to-br from-rarity-mythical/20 to-transparent",
+                          skin.rarity === 'legendary' && "bg-gradient-to-br from-rarity-legendary/20 to-transparent",
+                          skin.rarity === 'ancient' && "bg-gradient-to-br from-rarity-ancient/20 to-transparent",
+                          skin.rarity === 'contraband' && "bg-gradient-to-br from-rarity-contraband/20 to-transparent",
+                        )}/>
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-medium text-sm truncate">{skin.name}</h4>
+                          <span className="text-xs text-neon-purple font-medium">
+                            {skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-muted-foreground">{skin.weapon_type}</span>
+                          <Badge className={cn(
+                            "text-xs",
+                            skin.rarity === 'common' && "bg-rarity-common text-black hover:bg-rarity-common/80",
+                            skin.rarity === 'uncommon' && "bg-rarity-uncommon hover:bg-rarity-uncommon/80",
+                            skin.rarity === 'rare' && "bg-rarity-rare hover:bg-rarity-rare/80",
+                            skin.rarity === 'mythical' && "bg-rarity-mythical hover:bg-rarity-mythical/80",
+                            skin.rarity === 'legendary' && "bg-rarity-legendary hover:bg-rarity-legendary/80",
+                            skin.rarity === 'ancient' && "bg-rarity-ancient hover:bg-rarity-ancient/80",
+                            skin.rarity === 'contraband' && "bg-rarity-contraband hover:bg-rarity-contraband/80 text-black",
+                          )}>
+                            {skin.rarity}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {selectedSkin && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Skin Preview</Label>
-              <div className="mt-1 relative aspect-video overflow-hidden rounded-md border border-border/50 bg-muted">
-                <img 
-                  src={selectedSkin.image_url} 
-                  alt={selectedSkin.name}
-                  className="h-full w-full object-cover"
-                />
+        
+        {selectedSkin && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Skin Preview</Label>
+                <div className="mt-1 relative aspect-video overflow-hidden rounded-md border border-border/50 bg-muted">
+                  <img 
+                    src={selectedSkin.image_url} 
+                    alt={selectedSkin.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="float-value">Float Value: {floatValue.toFixed(5)}</Label>
+                    <span className="text-sm font-medium">{exterior}</span>
+                  </div>
+                  <Slider 
+                    id="float-value"
+                    min={0} 
+                    max={1} 
+                    step={0.001}
+                    value={[floatValue]} 
+                    onValueChange={(values) => setFloatValue(values[0])} 
+                    className="py-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Factory New</span>
+                    <span>Minimal Wear</span>
+                    <span>Field-Tested</span>
+                    <span>Battle-Scarred</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="stat-trak" 
+                    checked={isStatTrak}
+                    onCheckedChange={setIsStatTrak}
+                  />
+                  <Label htmlFor="stat-trak" className="text-base cursor-pointer">
+                    StatTrak™ Available
+                  </Label>
+                </div>
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="float-value">Float Value: {floatValue.toFixed(5)}</Label>
-                  <span className="text-sm font-medium">{exterior}</span>
-                </div>
-                <Slider 
-                  id="float-value"
-                  min={0} 
-                  max={1} 
-                  step={0.001}
-                  value={[floatValue]} 
-                  onValueChange={(values) => setFloatValue(values[0])} 
-                  className="py-2"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Factory New</span>
-                  <span>Minimal Wear</span>
-                  <span>Field-Tested</span>
-                  <span>Battle-Scarred</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="stat-trak" 
-                  checked={isStatTrak}
-                  onCheckedChange={setIsStatTrak}
-                />
-                <Label htmlFor="stat-trak" className="text-base cursor-pointer">
-                  StatTrak™ Available
-                </Label>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-medium mb-2">Price Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price-usd">Price (USD)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">$</span>
-                  <Input
-                    id="price-usd"
-                    type="number"
-                    placeholder="0.00"
-                    value={priceUSD}
-                    onChange={(e) => setPriceUSD(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="price-brl">Price (BRL)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">R$</span>
-                  <Input
-                    id="price-brl"
-                    type="number"
-                    placeholder="0.00"
-                    value={priceBRL}
-                    onChange={(e) => setPriceBRL(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="price-cny">Price (CNY)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">¥</span>
-                  <Input
-                    id="price-cny"
-                    type="number"
-                    placeholder="0.00"
-                    value={priceCNY}
-                    onChange={(e) => setPriceCNY(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="price-rub">Price (RUB)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">₽</span>
-                  <Input
-                    id="price-rub"
-                    type="number"
-                    placeholder="0.00"
-                    value={priceRUB}
-                    onChange={(e) => setPriceRUB(e.target.value)}
-                    className="pl-7"
-                  />
+            <div>
+              <h3 className="text-lg font-medium mb-2">Price Information</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2.5">
+                        {currencySymbols[selectedCurrency]}
+                      </span>
+                      <Input
+                        id="price"
+                        type="number"
+                        placeholder="0.00"
+                        value={priceValue}
+                        onChange={(e) => setPriceValue(e.target.value)}
+                        className="pl-7"
+                      />
+                    </div>
+                    <Select value={selectedCurrency} onValueChange={handleCurrencyChange}>
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="BRL">BRL (R$)</SelectItem>
+                        <SelectItem value="CNY">CNY (¥)</SelectItem>
+                        <SelectItem value="RUB">RUB (₽)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
-      
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={!selectedSkin}>Add to Inventory</Button>
-      </div>
-    </form>
+          </>
+        )}
+        
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="submit" disabled={!selectedSkin}>Add to Inventory</Button>
+        </div>
+      </form>
+    </ScrollArea>
   );
 };
 

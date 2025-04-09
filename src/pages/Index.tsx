@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import SkinCard from '@/components/SkinCard';
 import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, Loader2, ShoppingBag, Database, Cloud } from 'lucide-react';
+import { ArrowUp, Loader2, ShoppingBag, Database, Cloud, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -15,15 +16,18 @@ import { Link } from 'react-router-dom';
 const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [skins, setSkins] = useState<Skin[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [totalStats, setTotalStats] = useState({ count: 0, value: 0 });
   const [localStats, setLocalStats] = useState({ count: 0, value: 0 });
   const [steamStats, setSteamStats] = useState({ count: 0, value: 0 });
   
+  const [apiSkinsCount, setApiSkinsCount] = useState<number | null>(null);
+  const [showSkinsSection, setShowSkinsSection] = useState(false);
+  
   useEffect(() => {
-    fetchSkins();
+    fetchStats();
   }, []);
   
   useEffect(() => {
@@ -43,9 +47,48 @@ const Index = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
+  // Function to fetch just the stats for the cards without loading all skins
+  const fetchStats = async () => {
+    try {
+      const { data: skinData, error: skinError } = await supabase
+        .from('skins')
+        .select('price_usd')
+        .limit(1000);
+      
+      if (skinError) {
+        throw new Error(skinError.message);
+      }
+      
+      // Get total number of skins in database
+      const { count, error: countError } = await supabase
+        .from('skins')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        throw new Error(countError.message);
+      }
+      
+      setApiSkinsCount(count || 0);
+      
+      // Calculate stats for the cards
+      if (skinData && skinData.length > 0) {
+        const totalValue = skinData.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
+        setTotalStats({ count: skinData.length, value: totalValue });
+        
+        // Mock data for the other cards - in a real app this would come from the database
+        setLocalStats({ count: Math.floor(skinData.length * 0.3), value: totalValue * 0.3 });
+        setSteamStats({ count: Math.floor(skinData.length * 0.7), value: totalValue * 0.7 });
+      }
+    } catch (err: any) {
+      console.error("Error fetching stats:", err);
+      toast.error("Failed to load inventory stats");
+    }
+  };
+  
   const fetchSkins = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const { data, error } = await supabase
         .from('skins')
@@ -69,17 +112,12 @@ const Index = () => {
         }));
         
         setSkins(formattedSkins);
-        
-        const totalValue = formattedSkins.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
-        setTotalStats({ count: formattedSkins.length, value: totalValue });
-        
-        setLocalStats({ count: Math.floor(formattedSkins.length * 0.3), value: totalValue * 0.3 });
-        setSteamStats({ count: Math.floor(formattedSkins.length * 0.7), value: totalValue * 0.7 });
+        setShowSkinsSection(true);
         
         toast.success(`Loaded ${formattedSkins.length} skins from database`);
       } else {
-        toast.info("No skins found in database. Fetching from API...");
-        await fetchSkinsFromAPI();
+        toast.info("No skins found in database. You can import them from the API.");
+        setSkins([]);
       }
     } catch (err: any) {
       console.error("Error fetching skins:", err);
@@ -92,6 +130,9 @@ const Index = () => {
   
   const fetchSkinsFromAPI = async () => {
     try {
+      toast.info("Importing skins from API. This may take a moment...");
+      setLoading(true);
+      
       const response = await supabase.functions.invoke('fetch-cs2-skins');
       
       if (response.error) {
@@ -100,16 +141,20 @@ const Index = () => {
       
       toast.success("Successfully imported skins from API");
       await fetchSkins();
+      await fetchStats(); // Refresh stats after import
     } catch (err: any) {
       console.error("Error importing skins:", err);
       setError("Failed to import skins from API. Please try again later.");
       toast.error("Failed to import skins");
+    } finally {
+      setLoading(false);
     }
   };
   
-  const handleRefreshSkins = async () => {
-    toast.info("Refreshing skins from API...");
-    await fetchSkinsFromAPI();
+  const handleLoadSkins = () => {
+    if (!showSkinsSection) {
+      fetchSkins();
+    }
   };
   
   return (
@@ -158,57 +203,87 @@ const Index = () => {
           </Link>
         </div>
         
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-muted-foreground">
-            {skins.length > 0 ? `${skins.length} skins available` : ''}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshSkins}
-            className="gap-2"
-            disabled={loading}
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Refresh Skins
-          </Button>
-        </div>
-        
-        <CategoryTabs />
-        <FilterBar />
-        
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
-            <span className="ml-2">Loading skins...</span>
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {apiSkinsCount !== null ? (
+                `${apiSkinsCount} skins available in database`
+              ) : (
+                'Loading stats...'
+              )}
+            </p>
           </div>
-        ) : error ? (
-          <Alert variant="destructive" className="my-4">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : skins.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-lg text-muted-foreground">No skins found</p>
-            <Button onClick={fetchSkinsFromAPI} className="mt-4">
-              Import Skins
+          
+          <div className="flex gap-2">
+            {!showSkinsSection && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadSkins}
+                className="gap-2"
+                disabled={loading}
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Show Skins
+              </Button>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchSkinsFromAPI}
+              className="gap-2"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Import Skins from API
             </Button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
-            {skins.map((skin) => (
-              <SkinCard 
-                key={skin.id}
-                name={skin.name}
-                weaponType={skin.weapon_type}
-                image={skin.image_url}
-                rarity={skin.rarity}
-                wear={skin.exterior}
-                price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
-                statTrak={skin.statTrak}
-              />
-            ))}
-          </div>
+        </div>
+        
+        {showSkinsSection && (
+          <>
+            <CategoryTabs />
+            <FilterBar />
+            
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
+                <span className="ml-2">Loading skins...</span>
+              </div>
+            ) : error ? (
+              <Alert variant="destructive" className="my-4">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : skins.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-lg text-muted-foreground">No skins found</p>
+                <Button onClick={fetchSkinsFromAPI} className="mt-4">
+                  Import Skins
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
+                {skins.map((skin) => (
+                  <SkinCard 
+                    key={skin.id}
+                    name={skin.name}
+                    weaponType={skin.weapon_type}
+                    image={skin.image_url}
+                    rarity={skin.rarity}
+                    wear={skin.exterior}
+                    price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                    statTrak={skin.statTrak}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
       

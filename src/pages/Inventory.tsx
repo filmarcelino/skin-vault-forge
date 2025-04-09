@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,8 @@ import {
   Filter, 
   ArrowUpDown,
   Search,
-  X
+  X,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -23,6 +25,9 @@ import {
   initializeDemoInventory 
 } from '@/utils/userInventory';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AdvancedFilterDrawer, { FilterOptions } from '@/components/AdvancedFilterDrawer';
+import FilterBadges from '@/components/FilterBadges';
+import QuickSearchDropdown from '@/components/QuickSearchDropdown';
 
 const Inventory = () => {
   const [skins, setSkins] = useState<UserSkin[]>([]);
@@ -38,6 +43,19 @@ const Inventory = () => {
   const [totalSkins, setTotalSkins] = useState(0);
   const [activeTab, setActiveTab] = useState('all');
   
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
+    inventorySource: 'all',
+    rarities: [],
+    minPrice: 0,
+    maxPrice: 10000,
+    exteriors: [],
+    weaponTypes: [],
+    hasStatTrak: false,
+    sortBy: 'name',
+    sortDirection: 'asc'
+  });
+  
   useEffect(() => {
     initializeDemoInventory().then(() => {
       fetchInventory(currentPage, pageSize, activeTab);
@@ -49,17 +67,8 @@ const Inventory = () => {
   }, [currentPage, pageSize, activeTab]);
   
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredSkins(skins);
-    } else {
-      const lowercaseQuery = searchQuery.toLowerCase();
-      const filtered = skins.filter(skin => 
-        skin.name.toLowerCase().includes(lowercaseQuery) || 
-        skin.weapon_type.toLowerCase().includes(lowercaseQuery)
-      );
-      setFilteredSkins(filtered);
-    }
-  }, [searchQuery, skins]);
+    applyFiltersToSkins();
+  }, [searchQuery, skins, advancedFilters]);
   
   const fetchInventory = async (page: number, size: number, source: string = 'all', refreshCache: boolean = false) => {
     try {
@@ -70,7 +79,6 @@ const Inventory = () => {
       const result = await fetchUserInventory(page, size, source, filters, refreshCache);
       
       setSkins(result.skins);
-      setFilteredSkins(result.skins);
       setTotalSkins(result.count);
       setCurrentPage(result.page);
     } catch (err: any) {
@@ -82,8 +90,78 @@ const Inventory = () => {
     }
   };
   
+  const applyFiltersToSkins = () => {
+    if (!skins.length) {
+      setFilteredSkins([]);
+      return;
+    }
+    
+    let filtered = [...skins];
+    
+    // Apply text search filter
+    if (searchQuery.trim()) {
+      const lowercaseQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(skin => 
+        skin.name.toLowerCase().includes(lowercaseQuery) || 
+        skin.weapon_type.toLowerCase().includes(lowercaseQuery)
+      );
+    }
+    
+    // Apply advanced filters
+    if (advancedFilters.rarities.length > 0) {
+      filtered = filtered.filter(skin => advancedFilters.rarities.includes(skin.rarity));
+    }
+    
+    if (advancedFilters.exteriors.length > 0) {
+      filtered = filtered.filter(skin => advancedFilters.exteriors.includes(skin.exterior));
+    }
+    
+    if (advancedFilters.weaponTypes.length > 0) {
+      filtered = filtered.filter(skin => 
+        advancedFilters.weaponTypes.some(type => 
+          skin.weapon_type.toLowerCase().includes(type.toLowerCase())
+        )
+      );
+    }
+    
+    if (advancedFilters.hasStatTrak) {
+      filtered = filtered.filter(skin => skin.statTrak);
+    }
+    
+    // Price filtering
+    filtered = filtered.filter(skin => {
+      const price = skin.price_usd || 0;
+      return price >= advancedFilters.minPrice && price <= advancedFilters.maxPrice;
+    });
+    
+    // Sorting
+    filtered.sort((a, b) => {
+      const sortBy = advancedFilters.sortBy as keyof UserSkin;
+      const direction = advancedFilters.sortDirection === 'asc' ? 1 : -1;
+      
+      if (sortBy === 'price_usd') {
+        const priceA = a[sortBy] || 0;
+        const priceB = b[sortBy] || 0;
+        return (priceA - priceB) * direction;
+      }
+      
+      // For string comparisons
+      if (typeof a[sortBy] === 'string' && typeof b[sortBy] === 'string') {
+        return (a[sortBy] as string).localeCompare(b[sortBy] as string) * direction;
+      }
+      
+      // Fallback for other types
+      if (a[sortBy] < b[sortBy]) return -1 * direction;
+      if (a[sortBy] > b[sortBy]) return 1 * direction;
+      return 0;
+    });
+    
+    setFilteredSkins(filtered);
+  };
+  
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
+    setCurrentPage(1); // Reset to first page on search change
   };
   
   const clearSearch = () => {
@@ -156,6 +234,45 @@ const Inventory = () => {
     }
   };
   
+  const handleApplyAdvancedFilters = (filters: FilterOptions) => {
+    setAdvancedFilters(filters);
+    setActiveTab(filters.inventorySource);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+  
+  const handleRemoveFilter = (key: keyof FilterOptions, value?: string) => {
+    setAdvancedFilters(prev => {
+      const updated = { ...prev };
+      
+      // Handle array filters (rarities, exteriors, weaponTypes)
+      if (Array.isArray(updated[key]) && value) {
+        updated[key] = (updated[key] as string[]).filter(item => item !== value);
+      } 
+      // Handle boolean, string, number filters
+      else {
+        switch (key) {
+          case 'inventorySource':
+            updated.inventorySource = 'all';
+            break;
+          case 'hasStatTrak':
+            updated.hasStatTrak = false;
+            break;
+          case 'minPrice':
+            updated.minPrice = 0;
+            break;
+          case 'maxPrice':
+            updated.maxPrice = 10000;
+            break;
+          default:
+            // No change needed
+            break;
+        }
+      }
+      
+      return updated;
+    });
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -182,14 +299,14 @@ const Inventory = () => {
           </Button>
         </div>
         
-        <Tabs defaultValue="all" onValueChange={handleTabChange}>
+        <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="all">{isMobile ? 'All' : 'All Inventory'}</TabsTrigger>
             <TabsTrigger value="steam">{isMobile ? 'Steam' : 'Steam Inventory'}</TabsTrigger>
             <TabsTrigger value="local">{isMobile ? 'Local' : 'Local Collection'}</TabsTrigger>
           </TabsList>
           
-          <div className="flex items-center mb-6 gap-2">
+          <div className="flex flex-wrap items-center mb-6 gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -210,16 +327,27 @@ const Inventory = () => {
               )}
             </div>
             
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
-            
-            <Button variant="outline" size="icon">
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <QuickSearchDropdown onSelectSearch={handleApplyAdvancedFilters} />
+              
+              <Button 
+                onClick={() => setIsFilterDrawerOpen(true)}
+                variant="outline" 
+                className="gap-2"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden md:inline">Advanced Filters</span>
+              </Button>
+              
+              <Button variant="outline" size="icon">
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
-          <TabsContent value="all" className="mt-0">
+          <FilterBadges filters={advancedFilters} onRemoveFilter={handleRemoveFilter} />
+          
+          <TabsContent value={activeTab} className="mt-0">
             {loading ? (
               <div className="flex justify-center items-center py-20">
                 <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
@@ -227,7 +355,13 @@ const Inventory = () => {
               </div>
             ) : filteredSkins.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-lg text-muted-foreground">No skins found in your inventory</p>
+                <p className="text-lg text-muted-foreground">
+                  {searchQuery || Object.values(advancedFilters).some(v => 
+                    Array.isArray(v) ? v.length > 0 : v !== false && v !== 'all' && v !== 0 && v !== 10000
+                  ) 
+                    ? "No skins match your search criteria" 
+                    : "No skins found in your inventory"}
+                </p>
                 <Button 
                   onClick={() => setIsAddModalOpen(true)} 
                   className="mt-4"
@@ -271,44 +405,6 @@ const Inventory = () => {
               </>
             )}
           </TabsContent>
-          
-          <TabsContent value="local" className="mt-0">
-            {loading ? (
-              <div className="flex justify-center items-center py-20">
-                <Loader2 className="h-10 w-10 text-neon-purple animate-spin" />
-                <span className="ml-2">Loading local collection...</span>
-              </div>
-            ) : filteredSkins.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-lg text-muted-foreground">No skins found in your local collection</p>
-                <Button 
-                  onClick={() => setIsAddModalOpen(true)} 
-                  className="mt-4"
-                >
-                  Add Skin to Local Collection
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredSkins.map((skin) => (
-                  <SkinCard 
-                    key={skin.collection_id}
-                    skin={skin}
-                    onDelete={handleDeleteSkin}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="steam" className="mt-0">
-            <div className="text-center py-20">
-              <p className="text-lg text-muted-foreground">Connect your Steam account to view your inventory</p>
-              <Button variant="outline" className="mt-4">
-                Connect Steam
-              </Button>
-            </div>
-          </TabsContent>
         </Tabs>
       </main>
       
@@ -320,6 +416,13 @@ const Inventory = () => {
           <AddSkinForm onSubmit={addSkin} allSkins={[]} />
         </DialogContent>
       </Dialog>
+      
+      <AdvancedFilterDrawer 
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        onApplyFilters={handleApplyAdvancedFilters}
+        initialFilters={advancedFilters}
+      />
       
       <footer className="border-t border-border/40 py-6 px-4 mt-8">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">

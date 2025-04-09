@@ -1,8 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Skin, UserSkin } from '@/types/skin';
 import { toast } from 'sonner';
 import { cacheSkins, getCachedSkins } from './skinCache';
+import { FilterOptions } from '@/components/AdvancedFilterDrawer';
 
 // Cache key prefix
 const USER_INVENTORY_CACHE_PREFIX = 'user_inventory_';
@@ -78,6 +78,73 @@ export const addSkinToInventory = async (
     toast.error('Failed to add skin to inventory');
     return null;
   }
+};
+
+// Apply advanced filters to skins collection
+export const applyAdvancedFilters = (skins: UserSkin[], filters: FilterOptions): UserSkin[] => {
+  if (!skins.length) return [];
+  
+  let filtered = [...skins];
+  
+  // Filter by inventory source
+  if (filters.inventorySource !== 'all') {
+    // In a real app with proper source tracking, we'd filter by source here
+    // For demo, we'll assume all are from the selected source
+  }
+  
+  // Filter by rarities
+  if (filters.rarities.length > 0) {
+    filtered = filtered.filter(skin => filters.rarities.includes(skin.rarity));
+  }
+  
+  // Filter by exteriors
+  if (filters.exteriors.length > 0) {
+    filtered = filtered.filter(skin => filters.exteriors.includes(skin.exterior));
+  }
+  
+  // Filter by weapon types
+  if (filters.weaponTypes.length > 0) {
+    filtered = filtered.filter(skin => 
+      filters.weaponTypes.some(type => 
+        skin.weapon_type.toLowerCase().includes(type.toLowerCase())
+      )
+    );
+  }
+  
+  // Filter StatTrak items
+  if (filters.hasStatTrak) {
+    filtered = filtered.filter(skin => skin.statTrak);
+  }
+  
+  // Filter by price range
+  filtered = filtered.filter(skin => {
+    const price = skin.price_usd || 0;
+    return price >= filters.minPrice && price <= filters.maxPrice;
+  });
+  
+  // Sorting
+  filtered.sort((a, b) => {
+    const sortBy = filters.sortBy as keyof UserSkin;
+    const direction = filters.sortDirection === 'asc' ? 1 : -1;
+    
+    if (sortBy === 'price_usd') {
+      const priceA = a[sortBy] || 0;
+      const priceB = b[sortBy] || 0;
+      return (priceA - priceB) * direction;
+    }
+    
+    // For string comparisons
+    if (typeof a[sortBy] === 'string' && typeof b[sortBy] === 'string') {
+      return (a[sortBy] as string).localeCompare(b[sortBy] as string) * direction;
+    }
+    
+    // Fallback for other types
+    if (a[sortBy] < b[sortBy]) return -1 * direction;
+    if (a[sortBy] > b[sortBy]) return 1 * direction;
+    return 0;
+  });
+  
+  return filtered;
 };
 
 // Fetch user's inventory with pagination and improved search

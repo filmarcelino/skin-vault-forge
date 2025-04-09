@@ -15,7 +15,7 @@ import { Check, X, Shield, ShieldOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { grantAdminRole, revokeAdminRole } from '@/utils/adminUtils';
 
-// Update the User type to include is_admin as optional since we might add it dynamically
+// Define User type that matches what's expected in adminUtils.ts
 type User = {
   id: string;
   email: string | null;
@@ -23,7 +23,7 @@ type User = {
   created_at: string;
   avatar_url: string | null;
   steam_id: string | null;
-  is_admin?: boolean; // Make is_admin optional
+  is_admin?: boolean;
 };
 
 const AdminUserManagement = () => {
@@ -49,10 +49,10 @@ const AdminUserManagement = () => {
       if (usersError) throw usersError;
 
       // Cast the data to User[] with default is_admin value
-      const typedUsers = (usersData || []).map(user => ({
+      const typedUsers: User[] = (usersData || []).map(user => ({
         ...user,
-        is_admin: user.is_admin || false
-      })) as User[];
+        is_admin: user.is_admin !== undefined ? !!user.is_admin : false
+      }));
       
       setUsers(typedUsers);
     } catch (error) {

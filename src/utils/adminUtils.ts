@@ -35,7 +35,7 @@ export const checkAdminStatus = async () => {
     }
     
     // First check if is_admin property exists (add type safety)
-    return 'is_admin' in data ? data.is_admin === true : false;
+    return 'is_admin' in data ? !!data.is_admin : false;
   } catch (error) {
     console.error('Error in checkAdminStatus:', error);
     return false;
@@ -60,8 +60,8 @@ export const getAllUsers = async (): Promise<User[]> => {
     // Cast the data to include is_admin with default value
     return (data || []).map(user => ({
       ...user,
-      is_admin: 'is_admin' in user ? user.is_admin : false
-    }));
+      is_admin: user.is_admin !== undefined ? !!user.is_admin : false
+    })) as User[];
   } catch (error) {
     console.error('Error in getAllUsers:', error);
     return [];
@@ -74,21 +74,21 @@ export const getAllUsers = async (): Promise<User[]> => {
 export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
   try {
     // First check if the is_admin column exists
-    const { data: columnInfo } = await supabase
+    const { data: columnInfo, error: columnError } = await supabase
       .rpc('check_column_exists', { 
         table_name: 'users', 
         column_name: 'is_admin' 
       });
     
-    if (!columnInfo) {
-      console.error('is_admin column does not exist in users table');
+    if (columnError || !columnInfo) {
+      console.error('Error checking column or is_admin column does not exist:', columnError);
       return null;
     }
     
     // Now update with is_admin
     const { data, error } = await supabase
       .from('users')
-      .update({ is_admin: isAdmin } as any) // Use type assertion here
+      .update({ is_admin: isAdmin })
       .eq('id', userId)
       .select();
     
@@ -111,7 +111,7 @@ export const grantAdminRole = async (userId: string) => {
   try {
     const { error } = await supabase
       .from('users')
-      .update({ is_admin: true } as any) // Use type assertion here
+      .update({ is_admin: true })
       .eq('id', userId);
     
     if (error) {
@@ -133,7 +133,7 @@ export const revokeAdminRole = async (userId: string) => {
   try {
     const { error } = await supabase
       .from('users')
-      .update({ is_admin: false } as any) // Use type assertion here
+      .update({ is_admin: false })
       .eq('id', userId);
     
     if (error) {

@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import SkinCard from '@/components/SkinCard';
 import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, Loader2, ShoppingBag, Database, Steam } from 'lucide-react';
+import { ArrowUp, Loader2, ShoppingBag, Database, Cloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -19,7 +18,6 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Stats for the cards (these would be fetched from Supabase in a real implementation)
   const [totalStats, setTotalStats] = useState({ count: 0, value: 0 });
   const [localStats, setLocalStats] = useState({ count: 0, value: 0 });
   const [steamStats, setSteamStats] = useState({ count: 0, value: 0 });
@@ -49,18 +47,16 @@ const Index = () => {
     try {
       setLoading(true);
       
-      // Fetch skins from Supabase
       const { data, error } = await supabase
         .from('skins')
         .select('*')
-        .limit(20); // Limit to 20 skins for better performance
+        .limit(20);
       
       if (error) {
         throw new Error(error.message);
       }
       
       if (data && data.length > 0) {
-        // Transform the data to match our SkinCard component props
         const formattedSkins: Skin[] = data.map((skin) => ({
           id: skin.id,
           name: skin.name,
@@ -69,22 +65,19 @@ const Index = () => {
           rarity: (skin.rarity as 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband') || 'common',
           exterior: skin.exterior || 'Factory New',
           price_usd: skin.price_usd,
-          statTrak: Math.random() > 0.8, // Randomly assign StatTrak for now as API doesn't have this
+          statTrak: Math.random() > 0.8,
         }));
         
         setSkins(formattedSkins);
         
-        // Calculate stats for the cards
         const totalValue = formattedSkins.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
         setTotalStats({ count: formattedSkins.length, value: totalValue });
         
-        // Mock data for the other cards - in a real app this would come from the database
         setLocalStats({ count: Math.floor(formattedSkins.length * 0.3), value: totalValue * 0.3 });
         setSteamStats({ count: Math.floor(formattedSkins.length * 0.7), value: totalValue * 0.7 });
         
         toast.success(`Loaded ${formattedSkins.length} skins from database`);
       } else {
-        // If no skins in database, trigger the Edge Function to fetch them
         toast.info("No skins found in database. Fetching from API...");
         await fetchSkinsFromAPI();
       }
@@ -106,7 +99,6 @@ const Index = () => {
       }
       
       toast.success("Successfully imported skins from API");
-      // Fetch the newly imported skins
       await fetchSkins();
     } catch (err: any) {
       console.error("Error importing skins:", err);
@@ -135,7 +127,6 @@ const Index = () => {
           </p>
         </div>
         
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <InventoryStatsCard 
             title="Total Inventory" 
@@ -154,7 +145,7 @@ const Index = () => {
             title="Steam Inventory" 
             skinCount={steamStats.count} 
             totalValue={steamStats.value}
-            icon={<Steam className="h-4 w-4" />}
+            icon={<Cloud className="h-4 w-4" />}
           />
         </div>
         

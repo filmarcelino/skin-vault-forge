@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Check, X, Shield, ShieldOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,8 +46,9 @@ const AdminUserManagement = () => {
       if (usersError) throw usersError;
 
       // Fetch admin roles using the custom RPC function
+      // Add proper type arguments for the RPC function
       const { data: adminUsersData, error: adminError } = await supabase
-        .rpc<string[]>('get_all_admin_users');
+        .rpc<string[], Record<string, never>>('get_all_admin_users');
 
       if (adminError) throw adminError;
 

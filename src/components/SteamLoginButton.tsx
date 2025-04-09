@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 const SteamLoginButton = () => {
   const handleSteamLogin = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'steam',
+      // Using 'steam' as string literal since it's not in the Provider type
+      provider: 'steam' as any,
       options: {
         redirectTo: window.location.origin + '/auth/callback',
       },

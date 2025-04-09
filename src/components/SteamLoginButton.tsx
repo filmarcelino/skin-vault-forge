@@ -4,36 +4,31 @@ import { FaSteam } from 'react-icons/fa';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const SteamLoginButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const handleSteamLogin = () => {
+  const handleSteamLogin = async () => {
     try {
       setIsLoading(true);
       
       console.log('Starting Steam login process');
       
-      // Define the return URL based on the current domain
-      const currentDomain = window.location.origin;
-      const returnUrl = `${currentDomain}/api/steam-callback`;
+      // Call our steam-start function to get the redirect URL
+      const { data, error } = await supabase.functions.invoke('steam-start');
       
-      // Set up Steam OpenID parameters
-      const steamOpenIdUrl = 'https://steamcommunity.com/openid/login';
-      const params = new URLSearchParams({
-        'openid.ns': 'http://specs.openid.net/auth/2.0',
-        'openid.mode': 'checkid_setup',
-        'openid.return_to': returnUrl,
-        'openid.realm': currentDomain,
-        'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
-        'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
-      });
+      if (error) {
+        throw new Error(error.message || 'Failed to start Steam authentication');
+      }
       
-      // Redirect to Steam login page
-      const redirectUrl = `${steamOpenIdUrl}?${params.toString()}`;
-      console.log('Redirecting to Steam:', redirectUrl);
-      window.location.href = redirectUrl;
+      if (data?.redirectUrl) {
+        console.log('Redirecting to Steam:', data.redirectUrl);
+        window.location.href = data.redirectUrl;
+      } else {
+        throw new Error('No redirect URL received');
+      }
       
     } catch (error) {
       console.error('Steam login error:', error);

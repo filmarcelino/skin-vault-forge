@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -246,6 +245,7 @@ const Inventory = () => {
       
       // Handle array filters (rarities, exteriors, weaponTypes)
       if (Array.isArray(updated[key]) && value) {
+        // Fix the type issue here - explicitly cast to string[]
         updated[key] = (updated[key] as string[]).filter(item => item !== value);
       } 
       // Handle boolean, string, number filters

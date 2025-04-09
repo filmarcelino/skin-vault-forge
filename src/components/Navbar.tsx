@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart, Shield } from 'lucide-react';
+import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart, Shield, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -10,6 +10,9 @@ import { Skin } from '@/types/skin';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { checkAdminStatus } from '@/utils/adminUtils';
+import SteamLoginButton from './SteamLoginButton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -17,8 +20,27 @@ const Navbar: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Skin[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    const checkUserSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUser(data.session?.user || null);
+    };
+    
+    checkUserSession();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setCurrentUser(session?.user || null);
+      }
+    );
+    
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -102,6 +124,11 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+  };
+
   const { data: isAdmin } = useQuery({
     queryKey: ['admin-status'],
     queryFn: checkAdminStatus,
@@ -139,6 +166,24 @@ const Navbar: React.FC = () => {
                       <Shield className="h-4 w-4" />
                       Admin Dashboard
                     </Link>
+                  )}
+                  {!currentUser && (
+                    <button 
+                      onClick={() => setShowLoginDialog(true)}
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Login
+                    </button>
+                  )}
+                  {currentUser && (
+                    <button 
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Logout
+                    </button>
                   )}
                 </nav>
               </SheetContent>
@@ -245,11 +290,41 @@ const Navbar: React.FC = () => {
             <Settings className="h-5 w-5" />
           </Button>
           
-          <Button variant="ghost" size="icon">
-            <User className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => currentUser ? null : setShowLoginDialog(true)}
+          >
+            {currentUser ? (
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser.user_metadata?.avatar_url} />
+                <AvatarFallback>
+                  {(currentUser.user_metadata?.username || currentUser.email || 'U').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <User className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>
+
+      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Login to SkinVault</DialogTitle>
+            <DialogDescription>
+              Connect with your Steam account to access your inventory and manage your skins.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center gap-4 py-4">
+            <SteamLoginButton />
+            <p className="text-sm text-muted-foreground mt-4">
+              By logging in, you agree to our Terms of Service and Privacy Policy.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 };

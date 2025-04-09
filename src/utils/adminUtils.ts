@@ -13,9 +13,9 @@ export const checkAdminStatus = async (): Promise<boolean> => {
 
     const userId = session.user.id;
     
-    // Check if user has admin role using the RPC function
+    // Check if user has admin role using the RPC function with type parameters
     const { data, error } = await supabase
-      .rpc('has_admin_role', { user_id: userId });
+      .rpc<boolean>('has_admin_role', { user_id: userId });
     
     if (error) {
       console.error('Error checking admin status:', error);
@@ -35,9 +35,9 @@ export const checkAdminStatus = async (): Promise<boolean> => {
  */
 export const grantAdminRole = async (userId: string): Promise<boolean> => {
   try {
-    // Use RPC function to add admin role
+    // Use RPC function to add admin role with type parameters
     const { error } = await supabase
-      .rpc('add_admin_role', { user_id: userId });
+      .rpc<void>('add_admin_role', { user_id: userId });
     
     if (error) throw error;
     
@@ -54,9 +54,9 @@ export const grantAdminRole = async (userId: string): Promise<boolean> => {
  */
 export const revokeAdminRole = async (userId: string): Promise<boolean> => {
   try {
-    // Use RPC function to remove admin role
+    // Use RPC function to remove admin role with type parameters
     const { error } = await supabase
-      .rpc('remove_admin_role', { user_id: userId });
+      .rpc<void>('remove_admin_role', { user_id: userId });
     
     if (error) throw error;
     

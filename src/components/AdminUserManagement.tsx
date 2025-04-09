@@ -47,7 +47,7 @@ const AdminUserManagement = () => {
 
       // Fetch admin roles using the custom RPC function
       const { data: adminUsersData, error: adminError } = await supabase
-        .rpc('get_all_admin_users') as { data: string[] | null, error: any };
+        .rpc('get_all_admin_users', {}) as unknown as { data: string[] | null, error: any };
 
       if (adminError) throw adminError;
 

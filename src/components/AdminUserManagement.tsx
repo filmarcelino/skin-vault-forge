@@ -15,12 +15,15 @@ import { Check, X, Shield, ShieldOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { grantAdminRole, revokeAdminRole } from '@/utils/adminUtils';
 
+// Update the User type to include is_admin as optional since we might add it dynamically
 type User = {
   id: string;
   email: string | null;
   username: string | null;
-  is_admin: boolean;
   created_at: string;
+  avatar_url: string | null;
+  steam_id: string | null;
+  is_admin?: boolean; // Make is_admin optional
 };
 
 const AdminUserManagement = () => {
@@ -45,8 +48,13 @@ const AdminUserManagement = () => {
 
       if (usersError) throw usersError;
 
-      // No need for separate RPC call since is_admin is now directly on users table
-      setUsers(usersData as User[]);
+      // Cast the data to User[] with default is_admin value
+      const typedUsers = (usersData || []).map(user => ({
+        ...user,
+        is_admin: user.is_admin || false
+      })) as User[];
+      
+      setUsers(typedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
       toast({
@@ -163,7 +171,7 @@ const AdminUserManagement = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => toggleAdminRole(user.id, user.is_admin)}
+                        onClick={() => toggleAdminRole(user.id, !!user.is_admin)}
                       >
                         {user.is_admin ? (
                           <ShieldOff className="h-4 w-4 mr-1" />

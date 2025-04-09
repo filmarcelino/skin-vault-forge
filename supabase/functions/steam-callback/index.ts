@@ -64,6 +64,38 @@ serve(async (req) => {
     
     console.log(`Steam user found: ${steamUser.personaname}`);
     
+    // Check if the is_admin column exists in the users table
+    try {
+      const { data: tableInfo, error: tableError } = await supabase
+        .rpc('check_column_exists', { 
+          table_name: 'users', 
+          column_name: 'is_admin' 
+        });
+      
+      if (tableError) {
+        console.error(`Error checking for is_admin column: ${tableError.message}`);
+        // Continue without the column check
+      } else if (!tableInfo) {
+        console.log('is_admin column does not exist, will create it');
+        
+        // Attempt to add the column if it doesn't exist
+        const { error: alterError } = await supabase
+          .rpc('create_check_column_exists_function');
+        
+        if (alterError) {
+          console.error(`Error creating is_admin column: ${alterError.message}`);
+          // Continue without the column
+        } else {
+          console.log('Successfully created is_admin column');
+        }
+      } else {
+        console.log('is_admin column exists');
+      }
+    } catch (error) {
+      console.error(`Error in column check: ${error.message}`);
+      // Continue without the column check
+    }
+    
     // Check if user with this Steam ID exists
     console.log('Checking if user exists in database');
     const { data: existingUsers, error: queryError } = await supabase
@@ -110,22 +142,43 @@ serve(async (req) => {
       userId = authUser.user.id;
       console.log(`New user created with id: ${userId}`);
       
+      // Prepare user data including is_admin
+      const userData = {
+        id: userId,
+        steam_id: steamId,
+        username: steamUser.personaname,
+        avatar_url: steamUser.avatarfull,
+        email: randomEmail,
+        is_admin: false
+      };
+      
       // Insert into users table
       const { error: insertError } = await supabase
         .from('users')
-        .insert({
-          id: userId,
-          steam_id: steamId,
-          username: steamUser.personaname,
-          avatar_url: steamUser.avatarfull,
-          email: randomEmail,
-          is_admin: false
-        });
+        .insert(userData);
         
       if (insertError) {
         console.error(`Error inserting user: ${insertError.message}`);
-        // Continue anyway, but log the error
-        console.log(`Will continue with session creation despite error: ${JSON.stringify(insertError)}`);
+        
+        // If error is about is_admin column, try without it
+        if (insertError.message.includes('is_admin')) {
+          console.log('Trying insertion without is_admin field');
+          
+          const { id, steam_id, username, avatar_url, email } = userData;
+          const { error: retryError } = await supabase
+            .from('users')
+            .insert({ id, steam_id, username, avatar_url, email });
+            
+          if (retryError) {
+            console.error(`Error in retry insertion: ${retryError.message}`);
+            // Continue with session creation despite error
+          } else {
+            console.log('Successfully inserted user without is_admin field');
+          }
+        } else {
+          // Continue with session creation despite error
+          console.log(`Will continue with session creation despite error: ${JSON.stringify(insertError)}`);
+        }
       }
     }
     

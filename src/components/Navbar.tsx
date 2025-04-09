@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import SearchResults from './SearchResults';
 import { Badge } from './ui/badge';
 import { Skin } from '@/types/skin';
+import { Link } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -96,7 +97,7 @@ const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
-      <div className="container flex h-16 items-center px-4 sm:px-8">
+      <div className="container flex h-14 items-center px-4 sm:px-8">
         <div className="flex items-center gap-2 mr-4">
           {isMobile && (
             <Sheet>
@@ -107,12 +108,12 @@ const Navbar: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="left" className="bg-background">
                 <nav className="grid gap-4 text-lg mt-8">
-                  <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                  <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Home
-                  </a>
-                  <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                  </Link>
+                  <Link to="/inventory" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Inventory
-                  </a>
+                  </Link>
                   <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Market
                   </a>
@@ -123,31 +124,30 @@ const Navbar: React.FC = () => {
               </SheetContent>
             </Sheet>
           )}
-          <a href="/" className="flex items-center gap-2">
-            <div className="relative h-8 w-8 overflow-hidden rounded-lg bg-neon-violet flex items-center justify-center">
-              <span className="font-bold text-white text-lg">CS</span>
+          <Link to="/" className="flex items-center gap-2">
+            <div className="relative h-6 w-6 overflow-hidden rounded-md bg-neon-violet flex items-center justify-center">
+              <span className="font-bold text-white text-xs">CS</span>
             </div>
-            <span className="text-xl font-bold tracking-tighter">
-              <span className="text-foreground">Clutch Studio's </span>
-              <span className="text-neon-purple">SkinVault</span>
+            <span className="text-base font-bold tracking-tight">
+              <span className="text-foreground">SkinVault</span>
             </span>
-          </a>
+          </Link>
         </div>
 
         {!isMobile && !isSearchOpen && (
           <nav className="hidden md:flex gap-6 mx-6">
-            <a 
-              href="#" 
+            <Link
+              to="/" 
               className="text-sm font-medium transition-colors hover:text-foreground text-muted-foreground"
             >
               Home
-            </a>
-            <a 
-              href="#" 
+            </Link>
+            <Link 
+              to="/inventory" 
               className="text-sm font-medium transition-colors hover:text-foreground text-muted-foreground"
             >
               Inventory
-            </a>
+            </Link>
             <a 
               href="#" 
               className="text-sm font-medium transition-colors hover:text-foreground text-muted-foreground"
@@ -185,9 +185,9 @@ const Navbar: React.FC = () => {
               </Button>
             )}
 
-            {/* Search Results Dropdown */}
+            {/* Search Results Dropdown - Increased z-index */}
             {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-[500px] overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[9999] max-h-[500px] overflow-y-auto">
                 <SearchResults 
                   results={searchResults} 
                   isLoading={isLoading} 

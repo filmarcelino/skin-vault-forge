@@ -1,20 +1,28 @@
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import SkinCard from '@/components/SkinCard';
 import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, Loader2 } from 'lucide-react';
+import { ArrowUp, Loader2, ShoppingBag, Database, Steam } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Skin } from '@/types/skin';
+import InventoryStatsCard from '@/components/InventoryStatsCard';
+import { Link } from 'react-router-dom';
 
 const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [skins, setSkins] = useState<Skin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Stats for the cards (these would be fetched from Supabase in a real implementation)
+  const [totalStats, setTotalStats] = useState({ count: 0, value: 0 });
+  const [localStats, setLocalStats] = useState({ count: 0, value: 0 });
+  const [steamStats, setSteamStats] = useState({ count: 0, value: 0 });
   
   useEffect(() => {
     fetchSkins();
@@ -41,11 +49,11 @@ const Index = () => {
     try {
       setLoading(true);
       
-      // Fetch skins from Supabase, using the correct table name "skins"
+      // Fetch skins from Supabase
       const { data, error } = await supabase
         .from('skins')
         .select('*')
-        .limit(50); // Limit to 50 skins for better performance
+        .limit(20); // Limit to 20 skins for better performance
       
       if (error) {
         throw new Error(error.message);
@@ -65,6 +73,15 @@ const Index = () => {
         }));
         
         setSkins(formattedSkins);
+        
+        // Calculate stats for the cards
+        const totalValue = formattedSkins.reduce((sum, skin) => sum + (skin.price_usd || 0), 0);
+        setTotalStats({ count: formattedSkins.length, value: totalValue });
+        
+        // Mock data for the other cards - in a real app this would come from the database
+        setLocalStats({ count: Math.floor(formattedSkins.length * 0.3), value: totalValue * 0.3 });
+        setSteamStats({ count: Math.floor(formattedSkins.length * 0.7), value: totalValue * 0.7 });
+        
         toast.success(`Loaded ${formattedSkins.length} skins from database`);
       } else {
         // If no skins in database, trigger the Edge Function to fetch them
@@ -116,22 +133,54 @@ const Index = () => {
           <p className="text-muted-foreground">
             Manage, track, and showcase your CS2 skin collection in one place.
           </p>
-          
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              {skins.length > 0 ? `${skins.length} skins available` : ''}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshSkins}
-              className="gap-2"
-              disabled={loading}
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Refresh Skins
+        </div>
+        
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <InventoryStatsCard 
+            title="Total Inventory" 
+            skinCount={totalStats.count} 
+            totalValue={totalStats.value}
+            icon={<ShoppingBag className="h-4 w-4" />}
+            className="border-neon-purple/30"
+          />
+          <InventoryStatsCard 
+            title="Local Inventory" 
+            skinCount={localStats.count} 
+            totalValue={localStats.value}
+            icon={<Database className="h-4 w-4" />}
+          />
+          <InventoryStatsCard 
+            title="Steam Inventory" 
+            skinCount={steamStats.count} 
+            totalValue={steamStats.value}
+            icon={<Steam className="h-4 w-4" />}
+          />
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold mb-4">Featured Skins</h2>
+          <Link to="/inventory">
+            <Button variant="outline" size="sm">
+              Manage Inventory
             </Button>
-          </div>
+          </Link>
+        </div>
+        
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-muted-foreground">
+            {skins.length > 0 ? `${skins.length} skins available` : ''}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshSkins}
+            className="gap-2"
+            disabled={loading}
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            Refresh Skins
+          </Button>
         </div>
         
         <CategoryTabs />

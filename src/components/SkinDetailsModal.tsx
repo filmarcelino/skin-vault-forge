@@ -1,38 +1,27 @@
 
 import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Skin } from '@/types/skin';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Skin } from '@/types/skin';
-import { ShoppingCart, Heart } from 'lucide-react';
 
 interface SkinDetailsModalProps {
-  skin: Skin;
+  skin: Skin | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const SkinDetailsModal: React.FC<SkinDetailsModalProps> = ({
-  skin,
-  isOpen,
-  onClose,
-}) => {
+const SkinDetailsModal: React.FC<SkinDetailsModalProps> = ({ skin, isOpen, onClose }) => {
+  if (!skin) return null;
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-xl flex justify-between items-center">
+          <DialogTitle className="flex items-center justify-between gap-2">
             <span>{skin.name}</span>
             <Badge className={cn(
-              "ml-2",
+              "text-xs",
               skin.rarity === 'common' && "bg-rarity-common text-black hover:bg-rarity-common/80",
               skin.rarity === 'uncommon' && "bg-rarity-uncommon hover:bg-rarity-uncommon/80",
               skin.rarity === 'rare' && "bg-rarity-rare hover:bg-rarity-rare/80",
@@ -41,64 +30,81 @@ const SkinDetailsModal: React.FC<SkinDetailsModalProps> = ({
               skin.rarity === 'ancient' && "bg-rarity-ancient hover:bg-rarity-ancient/80",
               skin.rarity === 'contraband' && "bg-rarity-contraband hover:bg-rarity-contraband/80 text-black",
             )}>
-              {skin.rarity}
+              {skin.rarity.charAt(0).toUpperCase() + skin.rarity.slice(1)}
             </Badge>
           </DialogTitle>
-          <DialogDescription className="flex justify-between">
-            <span>{skin.weapon_type}</span>
-            <span>{skin.exterior || "Factory New"}</span>
-          </DialogDescription>
         </DialogHeader>
         
-        <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border/50 mb-4">
-          <img
-            src={skin.image_url}
-            alt={skin.name}
-            className="h-full w-full object-contain"
-          />
-          <div className={cn(
-            "absolute inset-0 opacity-20",
-            skin.rarity === 'common' && "bg-gradient-to-br from-rarity-common/20 to-transparent",
-            skin.rarity === 'uncommon' && "bg-gradient-to-br from-rarity-uncommon/20 to-transparent",
-            skin.rarity === 'rare' && "bg-gradient-to-br from-rarity-rare/20 to-transparent",
-            skin.rarity === 'mythical' && "bg-gradient-to-br from-rarity-mythical/20 to-transparent",
-            skin.rarity === 'legendary' && "bg-gradient-to-br from-rarity-legendary/20 to-transparent",
-            skin.rarity === 'ancient' && "bg-gradient-to-br from-rarity-ancient/20 to-transparent",
-            skin.rarity === 'contraband' && "bg-gradient-to-br from-rarity-contraband/20 to-transparent",
-          )}/>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">Price:</div>
-            <div className="text-2xl font-bold text-neon-purple">
-              {skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+        <div className="space-y-6">
+          {/* Skin Image */}
+          <div className="relative aspect-video overflow-hidden rounded-md border border-border/50">
+            <img 
+              src={skin.image_url} 
+              alt={skin.name}
+              className="h-full w-full object-cover"
+            />
+            <div className={cn(
+              "absolute inset-0 opacity-20",
+              skin.rarity === 'common' && "bg-gradient-to-br from-rarity-common/20 to-transparent",
+              skin.rarity === 'uncommon' && "bg-gradient-to-br from-rarity-uncommon/20 to-transparent",
+              skin.rarity === 'rare' && "bg-gradient-to-br from-rarity-rare/20 to-transparent",
+              skin.rarity === 'mythical' && "bg-gradient-to-br from-rarity-mythical/20 to-transparent",
+              skin.rarity === 'legendary' && "bg-gradient-to-br from-rarity-legendary/20 to-transparent",
+              skin.rarity === 'ancient' && "bg-gradient-to-br from-rarity-ancient/20 to-transparent",
+              skin.rarity === 'contraband' && "bg-gradient-to-br from-rarity-contraband/20 to-transparent",
+            )}/>
+            
+            {skin.statTrak && (
+              <Badge 
+                className="absolute top-2 left-2 bg-yellow-600/80 hover:bg-yellow-600 text-white"
+              >
+                StatTrak™
+              </Badge>
+            )}
+          </div>
+          
+          {/* Skin Details */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Weapon Type</p>
+                <p className="font-medium">{skin.weapon_type}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Exterior</p>
+                <p className="font-medium">{skin.exterior}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Rarity</p>
+                <p className="font-medium capitalize">{skin.rarity}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">StatTrak™</p>
+                <p className="font-medium">{skin.statTrak ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            
+            {/* Price Information */}
+            <div className="pt-2">
+              <h3 className="text-lg font-medium mb-2">Price Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1 p-3 border border-border rounded-md">
+                  <p className="text-sm text-muted-foreground">USD</p>
+                  <p className="font-medium text-neon-purple">
+                    {skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
+                  </p>
+                </div>
+                
+                <div className="space-y-1 p-3 border border-border rounded-md">
+                  <p className="text-sm text-muted-foreground">Steam Market</p>
+                  <p className="font-medium">
+                    {skin.price_usd ? `$${(skin.price_usd * 0.95).toFixed(2)}` : 'N/A'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">StatTrak™:</div>
-            <div className="text-base">
-              {skin.statTrak ? (
-                <Badge variant="outline" className="bg-yellow-600/30 text-yellow-200 border-yellow-600">
-                  StatTrak™ Available
-                </Badge>
-              ) : (
-                "Not Available"
-              )}
-            </div>
-          </div>
         </div>
-        
-        <DialogFooter className="flex sm:justify-between gap-2">
-          <Button variant="outline">
-            <Heart className="mr-2 h-4 w-4" />
-            Add to Wishlist
-          </Button>
-          <Button>
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Add to Cart
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

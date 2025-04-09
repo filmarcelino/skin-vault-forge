@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 // Get Supabase credentials from environment
@@ -23,12 +24,18 @@ serve(async (req) => {
     const url = new URL(req.url);
     const params = url.searchParams;
     
-    // Validate the OpenID response
-    const steamId = params.get('openid.claimed_id')?.split('/').pop();
+    // Extract Steam ID
+    const claimed_id = params.get('openid.claimed_id');
+    if (!claimed_id) {
+      console.error('No claimed_id found in response');
+      throw new Error('Authentication failed: No claimed_id found');
+    }
+    
+    const steamId = claimed_id.split('/').pop();
     
     if (!steamId) {
       console.error('No Steam ID found in response');
-      throw new Error('No Steam ID found in response');
+      throw new Error('Authentication failed: No Steam ID found');
     }
     
     console.log(`Steam ID extracted: ${steamId}`);
@@ -80,7 +87,7 @@ serve(async (req) => {
       // Create a new user with Steam data
       console.log('Creating new user with Steam data');
       
-      // Generate a random email that won't conflict
+      // Generate a unique email that won't conflict
       const randomEmail = `${steamId}_${Math.random().toString(36).substring(2)}@steam.placeholder`;
       
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
@@ -135,17 +142,17 @@ serve(async (req) => {
     
     console.log('Session created successfully');
     
-    // Determine the redirect URL (including protocol and adding trailing slash if needed)
-    const originUrl = new URL(req.headers.get('origin') || 'http://localhost:5173');
-    const baseUrl = `${originUrl.protocol}//${originUrl.host}`;
-    console.log(`Redirect base URL: ${baseUrl}`);
+    // Determine the redirect URL based on origin
+    const originUrl = req.headers.get('origin') || 'https://skin-vault-forge.lovable.app';
+    console.log(`Origin URL: ${originUrl}`);
     
     // Encode the session data for the redirect
     const sessionString = JSON.stringify(sessionData);
     const encodedSession = encodeURIComponent(sessionString);
     
     // Always use the /auth/callback path for the redirect
-    const redirectUrl = `${baseUrl}/auth/callback?session=${encodedSession}`;
+    // Make sure this matches the route in App.tsx
+    const redirectUrl = `${originUrl}/auth/callback?session=${encodedSession}`;
     console.log(`Redirecting to: ${redirectUrl}`);
     
     // Redirect to the client with session data
@@ -160,15 +167,14 @@ serve(async (req) => {
     console.error('Error in steam-callback:', error);
     
     // Get the origin for redirection to error page
-    const originUrl = new URL(req.headers.get('origin') || 'http://localhost:5173');
-    const baseUrl = `${originUrl.protocol}//${originUrl.host}`;
+    const originUrl = req.headers.get('origin') || 'https://skin-vault-forge.lovable.app';
     
     // Redirect to error page with descriptive message
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${baseUrl}/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`
+        'Location': `${originUrl}/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`
       }
     });
   }

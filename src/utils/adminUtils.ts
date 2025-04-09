@@ -61,15 +61,14 @@ export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
       .from('users')
       .update({ is_admin: isAdmin })
       .eq('id', userId)
-      .select()
-      .single();
+      .select();
     
     if (error) {
       console.error('Error updating admin status:', error);
       return null;
     }
     
-    return data;
+    return data[0];
   } catch (error) {
     console.error('Error in toggleAdminStatus:', error);
     return null;

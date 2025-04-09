@@ -12,6 +12,7 @@ import InventoryAnalytics from "./pages/InventoryAnalytics";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
+import SteamAuth from "./pages/SteamAuth";
 
 const App = () => {
   // Create a client
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/inventory/analytics" element={<InventoryAnalytics />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/steam-auth" element={<SteamAuth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

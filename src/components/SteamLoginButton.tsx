@@ -1,7 +1,6 @@
 
 import { Button } from '@/components/ui/button';
 import { FaSteam } from 'react-icons/fa';
-import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -10,27 +9,31 @@ const SteamLoginButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const handleSteamLogin = async () => {
+  const handleSteamLogin = () => {
     try {
       setIsLoading(true);
       
       console.log('Starting Steam login process');
-      // Call our edge function to start Steam authentication
-      const { data: redirectData, error: functionError } = await supabase.functions.invoke('steam-start');
       
-      if (functionError) {
-        console.error('Steam start function error:', functionError);
-        throw functionError;
-      }
+      // Define the return URL based on the current domain
+      const currentDomain = window.location.origin;
+      const returnUrl = `${currentDomain}/api/steam-callback`;
+      
+      // Set up Steam OpenID parameters
+      const steamOpenIdUrl = 'https://steamcommunity.com/openid/login';
+      const params = new URLSearchParams({
+        'openid.ns': 'http://specs.openid.net/auth/2.0',
+        'openid.mode': 'checkid_setup',
+        'openid.return_to': returnUrl,
+        'openid.realm': currentDomain,
+        'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+        'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
+      });
       
       // Redirect to Steam login page
-      if (redirectData?.redirectUrl) {
-        console.log('Redirecting to Steam:', redirectData.redirectUrl);
-        window.location.href = redirectData.redirectUrl;
-      } else {
-        console.error('Invalid response from steam-start function:', redirectData);
-        throw new Error('Invalid response from steam-start function');
-      }
+      const redirectUrl = `${steamOpenIdUrl}?${params.toString()}`;
+      console.log('Redirecting to Steam:', redirectUrl);
+      window.location.href = redirectUrl;
       
     } catch (error) {
       console.error('Steam login error:', error);

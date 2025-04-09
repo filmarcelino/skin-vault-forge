@@ -15,7 +15,7 @@ const SteamLoginButton = () => {
       setIsLoading(true);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'steam',
+        provider: 'steam' as any, // Using type assertion for now
         options: {
           redirectTo: window.location.origin + '/auth/callback',
         },
@@ -23,11 +23,21 @@ const SteamLoginButton = () => {
       
       if (error) {
         console.error('Steam login error:', error);
-        toast({
-          title: 'Login error',
-          description: error.message || 'Failed to connect with Steam. Please try again.',
-          variant: 'destructive',
-        });
+        
+        // Check for unsupported provider error
+        if (error.message?.includes('Unsupported provider')) {
+          toast({
+            title: 'Provider not enabled',
+            description: 'Steam login is not enabled in Supabase. Please go to Supabase Authentication settings and enable the Steam provider.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Login error',
+            description: error.message || 'Failed to connect with Steam. Please try again.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('Unexpected error during Steam login:', error);

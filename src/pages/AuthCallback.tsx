@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,8 @@ const AuthCallback = () => {
     async function handleAuthCallback() {
       try {
         console.log("Auth callback initiated");
+        console.log("URL search params:", location.search);
+        
         // Check if we have an error parameter (from failed login)
         const searchParams = new URLSearchParams(location.search);
         const errorParam = searchParams.get('error');
@@ -28,7 +31,7 @@ const AuthCallback = () => {
             description: errorParam,
             variant: 'destructive',
           });
-          setTimeout(() => navigate('/'), 3000);
+          setTimeout(() => navigate('/login'), 3000);
           return;
         }
         
@@ -40,7 +43,7 @@ const AuthCallback = () => {
           try {
             // Parse the session data
             const sessionData = JSON.parse(decodeURIComponent(sessionParam));
-            console.log("Session data parsed successfully:", sessionData);
+            console.log("Session data parsed successfully");
             
             // Set the session in Supabase
             if (sessionData?.access_token && sessionData?.refresh_token) {
@@ -60,10 +63,7 @@ const AuthCallback = () => {
                 description: 'You have been successfully signed in via Steam.',
               });
               
-              // Get user data to confirm login
-              const { data: userData } = await supabase.auth.getUser();
-              console.log("Logged in user:", userData.user);
-              
+              // Redirect to home page after successful login
               setRedirectTo('/');
               return;
             } else {
@@ -80,43 +80,17 @@ const AuthCallback = () => {
             setRedirectTo('/login');
             return;
           }
-        } else {
-          console.log("No session data in URL, checking current session");
         }
         
-        // Otherwise proceed with standard OAuth callback handling
-        const { data, error } = await supabase.auth.getSession();
+        // If we've reached here without returning, something unexpected happened
+        console.error("Session parameter not found in URL");
         
-        if (error || !data.session) {
-          console.error('Auth callback error:', error);
-          toast({
-            title: 'Authentication failed',
-            description: 'There was a problem signing in. Please try again.',
-            variant: 'destructive',
-          });
-          setRedirectTo('/login');
-          return;
-        }
-        
-        // User authenticated successfully
-        const userId = data.session.user.id;
-        const identities = data.session.user.identities;
-        
-        // Check if this is a Steam login
-        const steamIdentity = identities?.find(id => id.provider === 'steam');
-        
-        if (steamIdentity) {
-          const steamId = steamIdentity.id;
-          
-          // Update the user record with Steam information
-          await updateUserWithSteamInfo(userId, steamId);
-        }
-
         toast({
-          title: 'Login successful',
-          description: 'You have been successfully signed in.',
+          title: 'Authentication error',
+          description: 'An unexpected error occurred during authentication. Please try again.',
+          variant: 'destructive',
         });
-        setRedirectTo('/');
+        setRedirectTo('/login');
       } catch (err) {
         console.error('Error in auth callback:', err);
         toast({
@@ -132,36 +106,6 @@ const AuthCallback = () => {
 
     handleAuthCallback();
   }, [toast, location.search, navigate]);
-
-  const updateUserWithSteamInfo = async (userId: string, steamId: string) => {
-    try {
-      // Call our edge function to fetch Steam user data
-      const { data: steamUserData, error: steamError } = await supabase.functions.invoke('fetch-steam-user', {
-        body: { steamId }
-      });
-      
-      if (steamError || !steamUserData) {
-        console.error('Error fetching Steam user data:', steamError);
-        return;
-      }
-      
-      // Update user record with Steam information
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          steam_id: steamId,
-          username: steamUserData.personaname || null,
-          avatar_url: steamUserData.avatarfull || null,
-        })
-        .eq('id', userId);
-      
-      if (updateError) {
-        console.error('Error updating user with Steam data:', updateError);
-      }
-    } catch (err) {
-      console.error('Error in updateUserWithSteamInfo:', err);
-    }
-  };
 
   if (loading) {
     return (
@@ -180,9 +124,9 @@ const AuthCallback = () => {
           <p>{error}</p>
           <button 
             className="mt-4 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
           >
-            Return to Home
+            Return to Login
           </button>
         </div>
       </div>

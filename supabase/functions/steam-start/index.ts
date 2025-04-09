@@ -14,31 +14,32 @@ serve(async (req) => {
 
   try {
     const steamOpenIdUrl = 'https://steamcommunity.com/openid/login';
+    // Get the origin from the request headers
     const origin = req.headers.get('origin') || '';
+    console.log(`Request origin: ${origin}`);
     
-    // Determine the return URL based on the origin
-    let returnTo;
-    if (origin.includes('lovable.app')) {
-      returnTo = `${origin}/auth/callback`;
-    } else if (origin.includes('vercel.app')) {
-      returnTo = `${origin}/auth/callback`;
-    } else if (origin.includes('localhost')) {
-      returnTo = `${origin}/auth/callback`;
-    } else {
-      returnTo = `${origin}/auth/callback`;
-    }
+    // Determine the callback URL based on the environment
+    let callbackUrl;
+    // For production with Supabase edge functions
+    callbackUrl = `https://mdwifkqdnqdvmgowwssz.functions.supabase.co/steam-callback`;
+    
+    console.log(`Using callback URL: ${callbackUrl}`);
 
+    // Create OpenID parameters for Steam
     const params = new URLSearchParams({
       'openid.ns': 'http://specs.openid.net/auth/2.0',
       'openid.mode': 'checkid_setup',
-      'openid.return_to': returnTo,
-      'openid.realm': returnTo,
+      'openid.return_to': callbackUrl,
+      'openid.realm': callbackUrl,
       'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
       'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
     });
 
+    const redirectUrl = `${steamOpenIdUrl}?${params.toString()}`;
+    console.log(`Generated redirect URL: ${redirectUrl}`);
+
     return new Response(
-      JSON.stringify({ redirectUrl: `${steamOpenIdUrl}?${params.toString()}` }),
+      JSON.stringify({ redirectUrl }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200

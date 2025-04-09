@@ -20,15 +20,18 @@ const SteamLoginButton = () => {
       const { data, error } = await supabase.functions.invoke('steam-start');
       
       if (error) {
+        console.error('Steam start error:', error);
         throw new Error(error.message || 'Failed to start Steam authentication');
       }
       
-      if (data?.redirectUrl) {
-        console.log('Redirecting to Steam:', data.redirectUrl);
-        window.location.href = data.redirectUrl;
-      } else {
-        throw new Error('No redirect URL received');
+      if (!data?.redirectUrl) {
+        console.error('No redirect URL received:', data);
+        throw new Error('No redirect URL received from server');
       }
+      
+      console.log('Redirecting to Steam:', data.redirectUrl);
+      // Redirect to Steam authentication page
+      window.location.href = data.redirectUrl;
       
     } catch (error) {
       console.error('Steam login error:', error);

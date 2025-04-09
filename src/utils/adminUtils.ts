@@ -65,12 +65,12 @@ export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
   try {
     // First check if the is_admin column exists using a type assertion
     // to avoid TypeScript errors with the RPC function
-    const { data: columnInfo, error: columnError } = await supabase.rpc(
-      'check_column_exists' as any,
+    const { data: columnInfo, error: columnError } = await (supabase.rpc as any)(
+      'check_column_exists',
       { 
         table_name: 'users', 
         column_name: 'is_admin' 
-      } as any
+      }
     );
     
     if (columnError || !columnInfo) {
@@ -187,7 +187,10 @@ export const demoteUser = async (userId: string) => {
 // This will be helpful for checking if is_admin exists before using it
 const createCheckColumnExistsFunction = async () => {
   // Using type assertion to avoid TypeScript errors with the RPC function
-  const { error } = await supabase.rpc('create_check_column_exists_function' as any);
+  const { error } = await (supabase.rpc as any)(
+    'create_check_column_exists_function'
+  );
+  
   if (error) {
     console.error('Error creating check_column_exists function:', error);
   }

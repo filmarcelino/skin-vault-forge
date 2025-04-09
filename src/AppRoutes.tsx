@@ -21,7 +21,7 @@ const AppRoutes = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
       
-      if (!session && !location.pathname.startsWith('/login') && !location.pathname.startsWith('/auth')) {
+      if (!session && !location.pathname.startsWith('/login') && !location.pathname.startsWith('/auth') && !location.pathname.startsWith('/steam-auth')) {
         navigate('/login');
       }
     });
@@ -39,7 +39,7 @@ const AppRoutes = () => {
       );
     }
 
-    if (!isAuthenticated && !location.pathname.startsWith('/login') && !location.pathname.startsWith('/auth')) {
+    if (!isAuthenticated && !location.pathname.startsWith('/login') && !location.pathname.startsWith('/auth') && !location.pathname.startsWith('/steam-auth')) {
       navigate('/login');
       return null;
     }

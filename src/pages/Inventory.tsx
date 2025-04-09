@@ -23,6 +23,7 @@ import {
   addSkinToInventory, 
   initializeDemoInventory 
 } from '@/utils/userInventory';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Inventory = () => {
   const [skins, setSkins] = useState<UserSkin[]>([]);
@@ -31,6 +32,7 @@ const Inventory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredSkins, setFilteredSkins] = useState<UserSkin[]>([]);
+  const isMobile = useIsMobile();
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -180,9 +182,9 @@ const Inventory = () => {
         
         <Tabs defaultValue="all" onValueChange={handleTabChange}>
           <TabsList className="mb-4">
-            <TabsTrigger value="all">All Inventory</TabsTrigger>
-            <TabsTrigger value="local">Local Collection</TabsTrigger>
-            <TabsTrigger value="steam">Steam Inventory</TabsTrigger>
+            <TabsTrigger value="all">{isMobile ? 'All' : 'All Inventory'}</TabsTrigger>
+            <TabsTrigger value="steam">{isMobile ? 'Steam' : 'Steam Inventory'}</TabsTrigger>
+            <TabsTrigger value="local">{isMobile ? 'Local' : 'Local Collection'}</TabsTrigger>
           </TabsList>
           
           <div className="flex items-center mb-6 gap-2">
@@ -324,7 +326,7 @@ const Inventory = () => {
       
       {/* Add Skin Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] z-[9999]">
           <DialogHeader>
             <DialogTitle>Add Skin to Inventory</DialogTitle>
           </DialogHeader>

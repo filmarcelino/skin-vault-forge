@@ -80,7 +80,7 @@ export const addSkinToInventory = async (
   }
 };
 
-// Fetch user's inventory with pagination
+// Fetch user's inventory with pagination and improved search
 export const fetchUserInventory = async (
   page: number,
   pageSize: number,
@@ -111,66 +111,130 @@ export const fetchUserInventory = async (
     // Calculate pagination offset
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-
-    // Start building the query
+    
+    // Build our base query
     let query = supabase
       .from('user_collections')
       .select(`
         *,
         skins(*)
       `, { count: 'exact' });
-
-    // Add source filter if provided
-    // In a real app, this would filter by a 'source' column in user_collections
-    // For now, we're just using demo data
-    if (source !== 'all') {
-      // This is a placeholder for when we have actual source data
-      // query = query.eq('source', source);
-    }
-
-    // Add user filter (replace with auth.uid() when auth is implemented)
+    
+    // Add user filter
     query = query.eq('user_id', 'demo-user');
 
-    // Add pagination
-    const { data, error, count } = await query
-      .range(from, to);
+    // Handle search if present
+    if (filters?.search) {
+      const searchQuery = filters.search.toLowerCase();
+      
+      // In a real app, we'd build an advanced search here that searches through joined tables
+      // For now, we'll just do a simple filter client-side since we can't directly query 
+      // the joined skins table in the where clause with current setup
+      
+      // Add source filter if needed
+      if (source !== 'all') {
+        // This would be handled by a column in the database in a real app
+        // For demo purposes, we're not filtering here
+      }
+      
+      const { data, error, count } = await query.range(from, to);
 
-    if (error) {
-      throw new Error(error.message);
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      // Format the data
+      let userSkins: UserSkin[] = data.map(item => ({
+        collection_id: item.id,
+        id: item.skins.id,
+        name: item.skins.name,
+        weapon_type: item.skins.weapon_type || 'Unknown',
+        image_url: item.skins.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+        rarity: (item.skins.rarity as any) || 'common',
+        exterior: item.skins.exterior || 'Factory New',
+        price_usd: item.skins.price_usd,
+        price_brl: item.skins.price_brl,
+        price_cny: item.skins.price_cny,
+        price_rub: item.skins.price_rub,
+        statTrak: false,
+        float: item.skins.float,
+        acquired_date: item.acquired_date,
+        acquisition_price: item.acquisition_price,
+        currency: item.currency,
+        notes: item.notes
+      }));
+      
+      // Split search into individual words for better matching
+      const searchTerms = searchQuery.split(/\s+/).filter(term => term.length > 0);
+      
+      // Filter based on search terms (client-side filtering)
+      if (searchTerms.length > 0) {
+        userSkins = userSkins.filter(skin => {
+          // Check if all search terms appear in either the name or weapon_type
+          return searchTerms.every(term => 
+            skin.name.toLowerCase().includes(term) || 
+            skin.weapon_type.toLowerCase().includes(term)
+          );
+        });
+      }
+      
+      const result = {
+        skins: userSkins,
+        count: userSkins.length, // Since we're filtering client-side, update the count
+        page,
+        pageSize
+      };
+      
+      // Cache results
+      cacheSkins(cacheKey, result);
+      
+      return result;
+    } else {
+      // No search filter, just handle source if needed
+      if (source !== 'all') {
+        // This would be handled by a column in the database in a real app
+        // For demo purposes, we're not filtering here
+      }
+      
+      const { data, error, count } = await query.range(from, to);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      // Format the data
+      const userSkins: UserSkin[] = data.map(item => ({
+        collection_id: item.id,
+        id: item.skins.id,
+        name: item.skins.name,
+        weapon_type: item.skins.weapon_type || 'Unknown',
+        image_url: item.skins.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+        rarity: (item.skins.rarity as any) || 'common',
+        exterior: item.skins.exterior || 'Factory New',
+        price_usd: item.skins.price_usd,
+        price_brl: item.skins.price_brl,
+        price_cny: item.skins.price_cny,
+        price_rub: item.skins.price_rub,
+        statTrak: false,
+        float: item.skins.float,
+        acquired_date: item.acquired_date,
+        acquisition_price: item.acquisition_price,
+        currency: item.currency,
+        notes: item.notes
+      }));
+      
+      const result = {
+        skins: userSkins,
+        count: count || 0,
+        page,
+        pageSize
+      };
+      
+      // Cache results
+      cacheSkins(cacheKey, result);
+      
+      return result;
     }
-
-    // Format the data
-    const userSkins: UserSkin[] = data.map(item => ({
-      collection_id: item.id,
-      id: item.skins.id,
-      name: item.skins.name,
-      weapon_type: item.skins.weapon_type || 'Unknown',
-      image_url: item.skins.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-      rarity: (item.skins.rarity as any) || 'common',
-      exterior: item.skins.exterior || 'Factory New',
-      price_usd: item.skins.price_usd,
-      price_brl: item.skins.price_brl,
-      price_cny: item.skins.price_cny,
-      price_rub: item.skins.price_rub,
-      statTrak: false, // Default since we don't have this in DB yet
-      float: item.skins.float,
-      acquired_date: item.acquired_date,
-      acquisition_price: item.acquisition_price,
-      currency: item.currency,
-      notes: item.notes
-    }));
-
-    const result = {
-      skins: userSkins,
-      count: count || 0,
-      page,
-      pageSize
-    };
-
-    // Cache results
-    cacheSkins(cacheKey, result);
-
-    return result;
   } catch (error) {
     console.error('Error fetching user inventory:', error);
     return {
@@ -196,15 +260,28 @@ export const clearUserInventoryCache = (): void => {
 // Search for skins in the master database (for adding to inventory)
 export const searchMasterSkins = async (
   query: string,
-  limit: number = 10
+  limit: number = 20 // Increased from 10 to 20
 ): Promise<Skin[]> => {
   try {
     if (!query || query.length < 2) return [];
+    
+    // Split query into words to search each part
+    const queryParts = query.toLowerCase().split(/\s+/).filter(part => part.length > 0);
+    
+    // Build a more complex query with OR conditions for each part
+    let queryCondition = '';
+    
+    queryParts.forEach((part, index) => {
+      if (index > 0) queryCondition += ',';
+      queryCondition += `name.ilike.%${part}%`;
+      queryCondition += `,weapon_type.ilike.%${part}%`;
+    });
 
+    // Perform search in Supabase with improved query
     const { data, error } = await supabase
       .from('skins')
       .select('*')
-      .or(`name.ilike.%${query}%, weapon_type.ilike.%${query}%`)
+      .or(queryCondition)
       .limit(limit);
 
     if (error) {

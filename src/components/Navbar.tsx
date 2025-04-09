@@ -44,12 +44,24 @@ const Navbar: React.FC = () => {
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        // Perform search in Supabase
+        // Split query into words to search each part
+        const queryParts = searchQuery.toLowerCase().split(/\s+/).filter(part => part.length > 0);
+        
+        // Build a more complex query with OR conditions for each part
+        let queryCondition = '';
+        
+        queryParts.forEach((part, index) => {
+          if (index > 0) queryCondition += ',';
+          queryCondition += `name.ilike.%${part}%`;
+          queryCondition += `,weapon_type.ilike.%${part}%`;
+        });
+        
+        // Perform search in Supabase with improved query
         const { data, error } = await supabase
           .from('skins')
           .select('*')
-          .or(`name.ilike.%${searchQuery}%, weapon_type.ilike.%${searchQuery}%`)
-          .limit(8);
+          .or(queryCondition)
+          .limit(20); // Increased limit to show more results
         
         if (error) {
           console.error('Search error:', error);

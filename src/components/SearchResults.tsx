@@ -90,13 +90,15 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, onSel
         ))}
       </div>
 
-      {/* Skin Details Modal */}
+      {/* Skin Details Modal with increased z-index */}
       {selectedSkin && (
-        <SkinDetailsModal
-          skin={selectedSkin}
-          isOpen={!!selectedSkin}
-          onClose={() => setSelectedSkin(null)}
-        />
+        <div className="z-[99999]">
+          <SkinDetailsModal
+            skin={selectedSkin}
+            isOpen={!!selectedSkin}
+            onClose={() => setSelectedSkin(null)}
+          />
+        </div>
       )}
     </>
   );

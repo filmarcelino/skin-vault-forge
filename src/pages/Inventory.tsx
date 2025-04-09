@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Skin, UserSkin } from '@/types/skin';
-import SkinCard from '@/components/SkinCard';
+import { SkinCard } from '@/components/SkinCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AddSkinForm from '@/components/AddSkinForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

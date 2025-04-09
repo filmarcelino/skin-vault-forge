@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
-import SkinCard from '@/components/SkinCard';
+import { SkinCard } from '@/components/SkinCard';
 import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';

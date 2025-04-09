@@ -1,5 +1,4 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 const corsHeaders = {
@@ -14,51 +13,52 @@ serve(async (req) => {
   }
 
   try {
-    const { steamId } = await req.json();
-    
-    if (!steamId) {
-      return new Response(
-        JSON.stringify({ error: 'Steam ID is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
-
     // Get the Steam API key from environment variables
     const steamApiKey = Deno.env.get('STEAM_API_KEY');
     
     if (!steamApiKey) {
-      console.error('Missing Steam API key');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      throw new Error('STEAM_API_KEY is not configured in Supabase');
     }
-
-    // Call Steam API to get user data
-    const steamApiUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamApiKey}&steamids=${steamId}`;
-    const steamResponse = await fetch(steamApiUrl);
-    const steamData = await steamResponse.json();
-
-    if (!steamResponse.ok || !steamData?.response?.players?.[0]) {
-      console.error('Steam API error', steamData);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch Steam user data' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+    
+    // Parse request body to get the Steam ID
+    const { steamId } = await req.json();
+    
+    if (!steamId) {
+      throw new Error('No Steam ID provided');
     }
-
-    // Return the first player from the response
-    const playerData = steamData.response.players[0];
+    
+    // Call the Steam API to get player details
+    const response = await fetch(
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Steam API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Return the player data
+    if (data?.response?.players?.length > 0) {
+      return new Response(
+        JSON.stringify(data.response.players[0]),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
+    } else {
+      throw new Error('Steam user not found');
+    }
+  } catch (error) {
+    console.error('Error in fetch-steam-user:', error);
     
     return new Response(
-      JSON.stringify(playerData),
-      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-    );
-  } catch (error) {
-    console.error('Error in fetch-steam-user function:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
     );
   }
 });

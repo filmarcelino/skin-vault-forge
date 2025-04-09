@@ -14,17 +14,21 @@ const SteamLoginButton = () => {
     try {
       setIsLoading(true);
       
+      console.log('Starting Steam login process');
       // Call our edge function to start Steam authentication
       const { data: redirectData, error: functionError } = await supabase.functions.invoke('steam-start');
       
       if (functionError) {
+        console.error('Steam start function error:', functionError);
         throw functionError;
       }
       
       // Redirect to Steam login page
       if (redirectData?.redirectUrl) {
+        console.log('Redirecting to Steam:', redirectData.redirectUrl);
         window.location.href = redirectData.redirectUrl;
       } else {
+        console.error('Invalid response from steam-start function:', redirectData);
         throw new Error('Invalid response from steam-start function');
       }
       

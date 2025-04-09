@@ -13,23 +13,30 @@ const AuthCallback = () => {
   useEffect(() => {
     async function handleAuthCallback() {
       try {
+        console.log("Auth callback initiated");
         // Check if we have session data in URL (from our custom Steam auth)
         const searchParams = new URLSearchParams(location.search);
         const sessionParam = searchParams.get('session');
         
         if (sessionParam) {
+          console.log("Found session data in URL");
           try {
             // Parse the session data
             const sessionData = JSON.parse(decodeURIComponent(sessionParam));
+            console.log("Session data parsed successfully");
             
             // Set the session in Supabase
             if (sessionData?.access_token && sessionData?.refresh_token) {
+              console.log("Setting session in Supabase");
               const { error } = await supabase.auth.setSession({
                 access_token: sessionData.access_token,
                 refresh_token: sessionData.refresh_token,
               });
               
-              if (error) throw error;
+              if (error) {
+                console.error("Error setting session:", error);
+                throw error;
+              }
               
               toast({
                 title: 'Login successful',
@@ -38,10 +45,22 @@ const AuthCallback = () => {
               
               setRedirectTo('/');
               return;
+            } else {
+              console.error("Invalid session data:", sessionData);
+              throw new Error("Invalid session data");
             }
           } catch (err) {
             console.error('Error setting custom session:', err);
+            toast({
+              title: 'Authentication failed',
+              description: 'There was a problem with your Steam sign in. Please try again.',
+              variant: 'destructive',
+            });
+            setRedirectTo('/login');
+            return;
           }
+        } else {
+          console.log("No session data in URL, checking current session");
         }
         
         // Otherwise proceed with standard OAuth callback handling

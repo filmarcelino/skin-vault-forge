@@ -19,6 +19,7 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Steam callback function started');
     const url = new URL(req.url);
     const params = url.searchParams;
     
@@ -26,18 +27,23 @@ serve(async (req) => {
     const steamId = params.get('openid.claimed_id')?.split('/').pop();
     
     if (!steamId) {
+      console.error('No Steam ID found in response');
       throw new Error('No Steam ID found in response');
     }
+    
+    console.log(`Steam ID extracted: ${steamId}`);
     
     // Create Supabase client with service role to manage users
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Fetch Steam user details
+    console.log('Fetching Steam user details');
     const steamUserResponse = await fetch(
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`
     );
     
     if (!steamUserResponse.ok) {
+      console.error(`Failed to fetch Steam user data: ${steamUserResponse.status}`);
       throw new Error('Failed to fetch Steam user data');
     }
     
@@ -45,10 +51,14 @@ serve(async (req) => {
     const steamUser = steamUserData.response.players[0];
     
     if (!steamUser) {
+      console.error('Steam user not found in API response');
       throw new Error('Steam user not found');
     }
     
+    console.log(`Steam user found: ${steamUser.personaname}`);
+    
     // Check if user with this Steam ID exists
+    console.log('Checking if user exists in database');
     const { data: existingUsers, error: queryError } = await supabase
       .from('users')
       .select('id')
@@ -56,6 +66,7 @@ serve(async (req) => {
       .maybeSingle();
       
     if (queryError) {
+      console.error(`Error querying user: ${queryError.message}`);
       throw queryError;
     }
     
@@ -63,9 +74,11 @@ serve(async (req) => {
     
     if (existingUsers) {
       // User exists, generate a new session
+      console.log(`Existing user found with id: ${existingUsers.id}`);
       userId = existingUsers.id;
     } else {
       // Create a new user with Steam data
+      console.log('Creating new user with Steam data');
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
         email: `${steamId}@steam.placeholder`,
         password: crypto.randomUUID(),
@@ -79,12 +92,15 @@ serve(async (req) => {
       });
       
       if (createError) {
+        console.error(`Error creating user: ${createError.message}`);
         throw createError;
       }
       
       userId = authUser.user.id;
+      console.log(`New user created with id: ${userId}`);
       
       // Update users table with Steam information
+      console.log('Updating users table with Steam information');
       const { error: updateError } = await supabase
         .from('users')
         .update({
@@ -95,11 +111,13 @@ serve(async (req) => {
         .eq('id', userId);
         
       if (updateError) {
-        console.error('Error updating user with Steam data:', updateError);
+        console.error(`Error updating user with Steam data: ${updateError.message}`);
+        // Continue anyway, this is not critical
       }
     }
     
     // Create a session for the user
+    console.log('Creating session for user');
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
       user_id: userId,
       properties: {
@@ -108,22 +126,24 @@ serve(async (req) => {
     });
     
     if (sessionError) {
+      console.error(`Error creating session: ${sessionError.message}`);
       throw sessionError;
     }
     
-    // Determine the redirect URL
-    const origin = req.headers.get('origin') || '';
-    let redirectUrl;
+    console.log('Session created successfully');
     
-    if (origin.includes('lovable.app')) {
-      redirectUrl = `${origin}/?session=${encodeURIComponent(JSON.stringify(sessionData))}`;
-    } else if (origin.includes('vercel.app')) {
-      redirectUrl = `${origin}/?session=${encodeURIComponent(JSON.stringify(sessionData))}`;
-    } else if (origin.includes('localhost')) {
-      redirectUrl = `${origin}/?session=${encodeURIComponent(JSON.stringify(sessionData))}`;
-    } else {
-      redirectUrl = `${origin}/?session=${encodeURIComponent(JSON.stringify(sessionData))}`;
-    }
+    // Determine the redirect URL (including protocol and adding trailing slash if needed)
+    const originUrl = new URL(req.headers.get('origin') || 'http://localhost:5173');
+    const baseUrl = `${originUrl.protocol}//${originUrl.host}`;
+    console.log(`Redirect base URL: ${baseUrl}`);
+    
+    // Encode the session data for the redirect
+    const sessionString = JSON.stringify(sessionData);
+    const encodedSession = encodeURIComponent(sessionString);
+    
+    // Always use the /auth/callback path for the redirect
+    const redirectUrl = `${baseUrl}/auth/callback?session=${encodedSession}`;
+    console.log(`Redirecting to: ${redirectUrl}`);
     
     // Redirect to the client with session data
     return new Response(null, {
@@ -136,13 +156,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in steam-callback:', error);
     
-    // Redirect to error page
-    const origin = req.headers.get('origin') || '';
+    // Get the origin for redirection to error page
+    const originUrl = new URL(req.headers.get('origin') || 'http://localhost:5173');
+    const baseUrl = `${originUrl.protocol}//${originUrl.host}`;
+    
+    // Redirect to error page with descriptive message
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${origin}/login?error=${encodeURIComponent(error.message)}`
+        'Location': `${baseUrl}/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`
       }
     });
   }

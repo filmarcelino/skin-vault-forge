@@ -5,21 +5,20 @@ import SkinCard from '@/components/SkinCard';
 import FilterBar from '@/components/FilterBar';
 import CategoryTabs from '@/components/CategoryTabs';
 import { Button } from '@/components/ui/button';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
 
 // Define the skin type based on our database schema
 interface Skin {
   id: string;
   name: string;
-  weaponType: string;
-  image: string;
+  weapon_type: string;
+  image_url: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband';
-  wear?: string;
-  price: string;
+  exterior?: string;
+  price_usd?: number | null;
   statTrak?: boolean;
 }
 
@@ -54,7 +53,7 @@ const Index = () => {
     try {
       setLoading(true);
       
-      // Fetch skins from Supabase
+      // Fetch skins from Supabase, using the correct table name "skins"
       const { data, error } = await supabase
         .from('skins')
         .select('*')
@@ -69,11 +68,11 @@ const Index = () => {
         const formattedSkins: Skin[] = data.map((skin) => ({
           id: skin.id,
           name: skin.name,
-          weaponType: skin.weapon_type || 'Unknown',
-          image: skin.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+          weapon_type: skin.weapon_type || 'Unknown',
+          image_url: skin.image_url || 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
           rarity: (skin.rarity as 'common' | 'uncommon' | 'rare' | 'mythical' | 'legendary' | 'ancient' | 'contraband') || 'common',
-          wear: skin.exterior || 'Factory New',
-          price: skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A',
+          exterior: skin.exterior || 'Factory New',
+          price_usd: skin.price_usd,
           statTrak: Math.random() > 0.8, // Randomly assign StatTrak for now as API doesn't have this
         }));
         
@@ -84,7 +83,7 @@ const Index = () => {
         toast.info("No skins found in database. Fetching from API...");
         await fetchSkinsFromAPI();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching skins:", err);
       setError(err.message);
       toast.error("Failed to load skins");
@@ -104,7 +103,7 @@ const Index = () => {
       toast.success("Successfully imported skins from API");
       // Fetch the newly imported skins
       await fetchSkins();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error importing skins:", err);
       setError("Failed to import skins from API. Please try again later.");
       toast.error("Failed to import skins");
@@ -173,11 +172,11 @@ const Index = () => {
               <SkinCard 
                 key={skin.id}
                 name={skin.name}
-                weaponType={skin.weaponType}
-                image={skin.image}
+                weaponType={skin.weapon_type}
+                image={skin.image_url}
                 rarity={skin.rarity}
-                wear={skin.wear}
-                price={skin.price}
+                wear={skin.exterior}
+                price={skin.price_usd ? `$${skin.price_usd.toFixed(2)}` : 'N/A'}
                 statTrak={skin.statTrak}
               />
             ))}

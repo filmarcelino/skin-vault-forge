@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseWithAdmin } from '@/integrations/supabase/client-override';
 
@@ -146,6 +145,52 @@ export const revokeAdminRole = async (userId: string) => {
   } catch (error) {
     console.error('Error in revokeAdminRole:', error);
     return false;
+  }
+};
+
+/**
+ * Update user role
+ */
+export const updateUserRole = async (userId: string, isAdmin: boolean) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        is_admin: isAdmin 
+      })
+      .eq('id', userId);
+    
+    if (error) {
+      throw new Error(`Error updating user role: ${error.message}`);
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error in updateUserRole:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Demote user
+ */
+export const demoteUser = async (userId: string) => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ 
+        is_admin: false 
+      })
+      .eq('id', userId);
+    
+    if (error) {
+      throw new Error(`Error demoting user: ${error.message}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in demoteUser:', error);
+    return { success: false, error: error.message };
   }
 };
 

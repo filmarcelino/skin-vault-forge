@@ -1,20 +1,25 @@
 
 import type { Database as OriginalDatabase } from './types';
 
+// Define the extended User type
+export interface User {
+  id: string;
+  email: string;
+  username: string;
+  avatar_url: string;
+  steam_id: string;
+  created_at: string;
+  is_admin: boolean;
+}
+
 // Override the users table type to include is_admin
 export type Database = {
   public: {
     Tables: {
       users: {
-        Row: OriginalDatabase['public']['Tables']['users']['Row'] & {
-          is_admin: boolean;
-        };
-        Insert: OriginalDatabase['public']['Tables']['users']['Insert'] & {
-          is_admin?: boolean;
-        };
-        Update: OriginalDatabase['public']['Tables']['users']['Update'] & {
-          is_admin?: boolean;
-        };
+        Row: User;
+        Insert: Partial<User>;
+        Update: Partial<User>;
         Relationships: OriginalDatabase['public']['Tables']['users']['Relationships'];
       };
     } & Omit<OriginalDatabase['public']['Tables'], 'users'>;

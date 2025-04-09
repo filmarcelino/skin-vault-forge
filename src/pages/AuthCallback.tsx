@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -9,10 +8,43 @@ const AuthCallback = () => {
   const [loading, setLoading] = useState(true);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const { toast } = useToast();
+  const location = useLocation();
 
   useEffect(() => {
     async function handleAuthCallback() {
       try {
+        // Check if we have session data in URL (from our custom Steam auth)
+        const searchParams = new URLSearchParams(location.search);
+        const sessionParam = searchParams.get('session');
+        
+        if (sessionParam) {
+          try {
+            // Parse the session data
+            const sessionData = JSON.parse(decodeURIComponent(sessionParam));
+            
+            // Set the session in Supabase
+            if (sessionData?.access_token && sessionData?.refresh_token) {
+              const { error } = await supabase.auth.setSession({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token,
+              });
+              
+              if (error) throw error;
+              
+              toast({
+                title: 'Login successful',
+                description: 'You have been successfully signed in via Steam.',
+              });
+              
+              setRedirectTo('/');
+              return;
+            }
+          } catch (err) {
+            console.error('Error setting custom session:', err);
+          }
+        }
+        
+        // Otherwise proceed with standard OAuth callback handling
         const { data, error } = await supabase.auth.getSession();
         
         if (error || !data.session) {
@@ -59,7 +91,7 @@ const AuthCallback = () => {
     }
 
     handleAuthCallback();
-  }, [toast]);
+  }, [toast, location.search]);
 
   const updateUserWithSteamInfo = async (userId: string, steamId: string) => {
     try {

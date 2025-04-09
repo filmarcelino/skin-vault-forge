@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import { FaSteam } from 'react-icons/fa';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,36 +13,46 @@ const SteamLoginButton = () => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'steam' as any, // Using type assertion for now
-        options: {
-          redirectTo: window.location.origin + '/auth/callback',
-        },
-      });
-      
-      if (error) {
-        console.error('Steam login error:', error);
+      // First try to use the Supabase built-in Steam provider
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'steam' as any,
+          options: {
+            redirectTo: window.location.origin + '/auth/callback',
+          },
+        });
         
-        // Check for unsupported provider error
-        if (error.message?.includes('Unsupported provider')) {
-          toast({
-            title: 'Provider not enabled',
-            description: 'Steam login is not enabled in Supabase. Please go to Supabase Authentication settings and enable the Steam provider.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Login error',
-            description: error.message || 'Failed to connect with Steam. Please try again.',
-            variant: 'destructive',
-          });
+        if (error) {
+          // If the error is NOT about unsupported provider, throw it
+          if (!error.message?.includes('Unsupported provider')) {
+            throw error;
+          }
+          
+          // Otherwise, fall back to our custom Steam auth flow
+          console.log('Falling back to custom Steam auth flow...');
+          
+          // Call our edge function
+          const { data: redirectData, error: functionError } = await supabase.functions.invoke('steam-start');
+          
+          if (functionError) {
+            throw functionError;
+          }
+          
+          // Redirect to Steam login page
+          if (redirectData?.redirectUrl) {
+            window.location.href = redirectData.redirectUrl;
+          } else {
+            throw new Error('Invalid response from steam-start function');
+          }
         }
+      } catch (error) {
+        throw error;
       }
     } catch (error) {
-      console.error('Unexpected error during Steam login:', error);
+      console.error('Steam login error:', error);
       toast({
         title: 'Login error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: error.message || 'Failed to connect with Steam. Please try again.',
         variant: 'destructive',
       });
     } finally {

@@ -63,12 +63,15 @@ export const getAllUsers = async (): Promise<User[]> => {
  */
 export const toggleAdminStatus = async (userId: string, isAdmin: boolean) => {
   try {
-    // First check if the is_admin column exists
-    const { data: columnInfo, error: columnError } = await supabase
-      .rpc('check_column_exists', { 
+    // First check if the is_admin column exists using a type assertion
+    // to avoid TypeScript errors with the RPC function
+    const { data: columnInfo, error: columnError } = await supabase.rpc(
+      'check_column_exists' as any,
+      { 
         table_name: 'users', 
         column_name: 'is_admin' 
-      });
+      } as any
+    );
     
     if (columnError || !columnInfo) {
       console.error('Error checking column or is_admin column does not exist:', columnError);
@@ -183,7 +186,8 @@ export const demoteUser = async (userId: string) => {
 // Add a new Supabase RPC function to check if a column exists in a table
 // This will be helpful for checking if is_admin exists before using it
 const createCheckColumnExistsFunction = async () => {
-  const { error } = await supabase.rpc('create_check_column_exists_function');
+  // Using type assertion to avoid TypeScript errors with the RPC function
+  const { error } = await supabase.rpc('create_check_column_exists_function' as any);
   if (error) {
     console.error('Error creating check_column_exists function:', error);
   }

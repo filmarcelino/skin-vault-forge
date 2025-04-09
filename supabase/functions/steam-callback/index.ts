@@ -49,9 +49,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Fetch Steam user details
-    console.log(`Fetching Steam user details using API key: ${steamApiKey.substring(0, 4)}...`);
+    console.log(`Fetching Steam user details for Steam ID: ${steamId}`);
     const steamUserUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`;
-    console.log(`Steam API URL: ${steamUserUrl}`);
     
     const steamUserResponse = await fetch(steamUserUrl);
     
@@ -62,7 +61,7 @@ serve(async (req) => {
     }
     
     const steamUserData = await steamUserResponse.json();
-    console.log(`Steam API response: ${JSON.stringify(steamUserData)}`);
+    console.log(`Steam API response received`);
     
     const steamUser = steamUserData.response.players[0];
     
@@ -72,35 +71,6 @@ serve(async (req) => {
     }
     
     console.log(`Steam user found: ${steamUser.personaname}`);
-    
-    // Check if the is_admin column exists
-    try {
-      const { data: hasColumn, error: columnError } = await supabase
-        .rpc('check_column_exists', { 
-          table_name: 'users', 
-          column_name: 'is_admin' 
-        });
-      
-      if (columnError) {
-        console.error(`Error checking for is_admin column: ${columnError.message}`);
-      } else if (!hasColumn) {
-        console.log('is_admin column does not exist, creating it');
-        
-        // Add the column if it doesn't exist
-        const { error: createError } = await supabase
-          .rpc('create_check_column_exists_function');
-        
-        if (createError) {
-          console.error(`Error creating is_admin column: ${createError.message}`);
-        } else {
-          console.log('Successfully created is_admin column');
-        }
-      } else {
-        console.log('is_admin column exists');
-      }
-    } catch (error) {
-      console.error(`Error in column check: ${error.message}`);
-    }
     
     // Check if user with this Steam ID exists
     console.log('Checking if user exists in database');
@@ -150,7 +120,21 @@ serve(async (req) => {
       userId = authUser.user.id;
       console.log(`New user created with id: ${userId}`);
       
-      // Prepare user data including is_admin
+      // Wait a moment to ensure the auth trigger has time to create the profile
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Ensure profile exists and has Steam data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (profileError) {
+        console.error(`Error checking profile: ${profileError.message}`);
+      }
+      
+      // Insert or update the user record
       const userData = {
         id: userId,
         steam_id: steamId,
@@ -160,29 +144,44 @@ serve(async (req) => {
         is_admin: false
       };
       
-      // Insert into users table
-      const { error: insertError } = await supabase
+      // First try to update if user exists in users table
+      const { error: updateError } = await supabase
         .from('users')
-        .insert(userData);
-        
-      if (insertError) {
-        console.error(`Error inserting user: ${insertError.message}`);
-        
-        // If error is about is_admin column, try without it
-        if (insertError.message.includes('is_admin')) {
-          console.log('Trying insertion without is_admin field');
+        .update({
+          steam_id: steamId,
+          username: steamUser.personaname,
+          avatar_url: steamUser.avatarfull
+        })
+        .eq('id', userId);
+      
+      if (updateError) {
+        console.log(`User not found in users table, creating new record`);
+        // User doesn't exist in users table, insert new record
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert(userData);
           
-          const { id, steam_id, username, avatar_url, email } = userData;
-          const { error: retryError } = await supabase
-            .from('users')
-            .insert({ id, steam_id, username, avatar_url, email });
+        if (insertError) {
+          console.error(`Error inserting user: ${insertError.message}`);
+          
+          // Try without is_admin if that's causing problems
+          if (insertError.message.includes('is_admin')) {
+            console.log('Trying insertion without is_admin field');
             
-          if (retryError) {
-            console.error(`Error in retry insertion: ${retryError.message}`);
-          } else {
-            console.log('Successfully inserted user without is_admin field');
+            const { id, steam_id, username, avatar_url, email } = userData;
+            const { error: retryError } = await supabase
+              .from('users')
+              .insert({ id, steam_id, username, avatar_url, email });
+              
+            if (retryError) {
+              console.error(`Error in retry insertion: ${retryError.message}`);
+            } else {
+              console.log('Successfully inserted user without is_admin field');
+            }
           }
         }
+      } else {
+        console.log('Successfully updated user record');
       }
       
       user = userData;

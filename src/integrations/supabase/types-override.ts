@@ -4,10 +4,10 @@ import type { Database as OriginalDatabase } from './types';
 // Define the extended User type
 export interface User {
   id: string;
-  email: string;
-  username: string;
-  avatar_url: string;
-  steam_id: string;
+  email: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  steam_id: string | null;
   created_at: string;
   is_admin: boolean;
 }

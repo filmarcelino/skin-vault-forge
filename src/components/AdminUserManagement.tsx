@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseWithAdmin } from '@/integrations/supabase/client-override';
@@ -15,17 +14,7 @@ import {
 import { Check, X, Shield, ShieldOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { grantAdminRole, revokeAdminRole } from '@/utils/adminUtils';
-
-// Define User type that matches what's expected in adminUtils.ts
-type User = {
-  id: string;
-  email: string | null;
-  username: string | null;
-  created_at: string;
-  avatar_url: string | null;
-  steam_id: string | null;
-  is_admin: boolean;
-};
+import { User } from '@/integrations/supabase/types-override';
 
 const AdminUserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -208,7 +197,6 @@ const AdminUserManagement = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {/* This would fetch and display the user's inventory items */}
             <p className="text-muted-foreground">
               Inventory details would be shown here. This could be implemented by fetching
               the user's collection items from the user_collections table.

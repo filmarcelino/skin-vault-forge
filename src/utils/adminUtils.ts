@@ -1,17 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseWithAdmin } from '@/integrations/supabase/client-override';
-
-// Define a User type that includes the is_admin field 
-// to match how we're using it in our code
-type User = {
-  id: string;
-  email: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  steam_id: string | null;
-  created_at: string;
-  is_admin: boolean;
-};
+import { User } from '@/integrations/supabase/types-override';
 
 /**
  * Check if the current user has admin status
@@ -153,11 +143,9 @@ export const revokeAdminRole = async (userId: string) => {
  */
 export const updateUserRole = async (userId: string, isAdmin: boolean) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseWithAdmin
       .from('users')
-      .update({ 
-        is_admin: isAdmin 
-      })
+      .update({ is_admin: isAdmin })
       .eq('id', userId);
     
     if (error) {
@@ -176,11 +164,9 @@ export const updateUserRole = async (userId: string, isAdmin: boolean) => {
  */
 export const demoteUser = async (userId: string) => {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseWithAdmin
       .from('users')
-      .update({ 
-        is_admin: false 
-      })
+      .update({ is_admin: false })
       .eq('id', userId);
     
     if (error) {

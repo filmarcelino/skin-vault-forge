@@ -20,6 +20,7 @@ const Login = () => {
     const errorParam = params.get('error');
     
     if (errorParam) {
+      console.error("Error from URL:", errorParam);
       setError(decodeURIComponent(errorParam));
       toast({
         title: "Authentication failed",
@@ -33,17 +34,24 @@ const Login = () => {
     // Check if user is already authenticated
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          throw sessionError;
+        }
         
         if (session) {
           // User is authenticated, redirect to home page
+          console.log("User is already authenticated, redirecting to home");
           toast({
             title: "Bem-vindo de volta!",
             description: "Você foi autenticado com sucesso.",
           });
           navigate('/');
         } else {
-          // Auto-redirect to Steam login
+          // User is not authenticated, show login options
+          console.log("No active session found, showing login options");
           setIsLoading(false);
         }
       } catch (err) {
@@ -62,10 +70,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-sm">
         <div className="text-center">
-          <h2 className="text-2xl font-bold tracking-tight">SkinVault</h2>
+          <h2 className="text-3xl font-bold tracking-tight">SkinVault</h2>
           <p className="text-sm text-muted-foreground mt-2">
             {isLoading ? "Verificando sessão..." : "Conecte com sua conta Steam para continuar"}
           </p>
@@ -87,7 +95,17 @@ const Login = () => {
           ) : (
             <>
               <SteamLoginButton id="steam-login-btn" />
-              <p className="text-xs text-center text-muted-foreground mt-4">
+              
+              {error && (
+                <button 
+                  onClick={() => setError(null)}
+                  className="w-full mt-4 py-2 text-sm text-primary hover:underline"
+                >
+                  Try again
+                </button>
+              )}
+              
+              <p className="text-xs text-center text-muted-foreground mt-6">
                 Ao fazer login, você concorda com nossos Termos de Serviço e Política de Privacidade.
               </p>
             </>

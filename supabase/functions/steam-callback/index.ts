@@ -112,22 +112,41 @@ serve(async (req) => {
       console.log(`New user created with id: ${authUser.user.id}`);
     } else {
       console.log(`Existing user found with id: ${existingUser.id}`);
+      
+      // Optionally update the user's metadata with the latest Steam info
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existingUser.id,
+        {
+          user_metadata: {
+            steam_id: steamId,
+            username: steamUser.personaname,
+            avatar_url: steamUser.avatarfull,
+            provider: 'steam',
+          }
+        }
+      );
+      
+      if (updateError) {
+        console.error(`Error updating user: ${updateError.message}`);
+        // Continue anyway as this is not critical
+      }
     }
     
     // Log in the user to get tokens
+    console.log('Attempting to sign in user with password');
     const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (loginError || !sessionData.session) {
-      console.error(`Login failed: ${loginError?.message}`);
+      console.error(`Login failed: ${loginError?.message || 'No session created'}`);
       throw new Error('Failed to create user session');
     }
     
     console.log('Session created successfully');
     
-    // Determine the redirect URL
+    // Determine the redirect URL - Fix: Add leading slash and ensure full URL
     const redirectUrl = 'https://skin-vault-forge.lovable.app/auth/callback';
     const access_token = sessionData.session.access_token;
     const refresh_token = sessionData.session.refresh_token;

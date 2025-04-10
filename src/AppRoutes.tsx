@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +28,6 @@ const AppRoutes = () => {
     return () => subscription.unsubscribe();
   }, [navigate, location]);
 
-  // Protected route wrapper
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated === null) {
       return (

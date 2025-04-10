@@ -4,7 +4,6 @@ import { FaSteam } from 'react-icons/fa';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface SteamLoginButtonProps {
   id?: string;
@@ -20,22 +19,11 @@ const SteamLoginButton = ({ id }: SteamLoginButtonProps) => {
       
       console.log('Starting Steam login process');
       
-      // Call our steam-start function to get the redirect URL
-      const { data, error } = await supabase.functions.invoke('steam-start');
+      // Redirect to the external Steam login API
+      const apiUrl = 'https://steam-login.clutchstudio.gg/auth/steam';
+      console.log('Redirecting to Steam API:', apiUrl);
       
-      if (error) {
-        console.error('Steam start error:', error);
-        throw new Error(error.message || 'Failed to start Steam authentication');
-      }
-      
-      if (!data?.redirectUrl) {
-        console.error('No redirect URL received:', data);
-        throw new Error('No redirect URL received from server');
-      }
-      
-      console.log('Redirecting to Steam:', data.redirectUrl);
-      // Redirect to Steam authentication page
-      window.location.href = data.redirectUrl;
+      window.location.href = apiUrl;
       
     } catch (error) {
       console.error('Steam login error:', error);

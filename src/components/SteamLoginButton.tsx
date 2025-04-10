@@ -27,12 +27,12 @@ const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) =
       
       if (error) {
         console.error('Steam start error:', error);
-        throw new Error(error.message || 'Failed to start Steam authentication');
+        throw new Error(error.message || 'Falha ao iniciar a autenticação do Steam');
       }
       
       if (!data?.redirectUrl) {
         console.error('No redirect URL received:', data);
-        throw new Error('No redirect URL received from server');
+        throw new Error('Nenhuma URL de redirecionamento recebida do servidor');
       }
       
       console.log('Redirecting to Steam:', data.redirectUrl);
@@ -42,8 +42,8 @@ const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) =
     } catch (error) {
       console.error('Steam login error:', error);
       toast({
-        title: 'Login error',
-        description: error.message || 'Failed to connect with Steam. Please try again.',
+        title: 'Erro de login',
+        description: error.message || 'Falha ao conectar com o Steam. Por favor, tente novamente.',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -62,7 +62,7 @@ const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) =
       ) : (
         <FaSteam className="mr-2" />
       )}
-      Login with Steam
+      Entrar com Steam
     </Button>
   );
 };

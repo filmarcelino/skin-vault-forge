@@ -29,49 +29,19 @@ const Login = () => {
         return;
       }
       
-      // Check for access_token and refresh_token in URL (from Steam auth callback)
+      // Check for error parameter in URL
       const params = new URLSearchParams(window.location.search);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      
-      if (accessToken && refreshToken) {
-        console.log('Found tokens in URL, setting session');
-        try {
-          // Set the session in Supabase
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          
-          if (error) throw error;
-          
-          // Clear tokens from URL for security
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          toast({
-            title: "Login bem-sucedido",
-            description: "Você foi autenticado com sucesso via Steam.",
-          });
-          
-          navigate('/inventory');
-        } catch (err) {
-          console.error('Error setting session:', err);
-          setError('Falha ao configurar a sessão. Por favor, tente novamente.');
-        }
+      const errorParam = params.get('error');
+      if (errorParam) {
+        toast({
+          title: "Erro de autenticação",
+          description: decodeURIComponent(errorParam),
+          variant: "destructive"
+        });
+        setError(decodeURIComponent(errorParam));
       }
       
       setIsLoading(false);
-      
-      // Check for error parameter in URL
-      const error = params.get('error');
-      if (error) {
-        toast({
-          title: "Erro de autenticação",
-          description: decodeURIComponent(error),
-          variant: "destructive"
-        });
-        setError(decodeURIComponent(error));
-      }
     };
     
     // Check session on component mount

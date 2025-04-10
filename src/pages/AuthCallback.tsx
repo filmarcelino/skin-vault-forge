@@ -35,36 +35,26 @@ const AuthCallback = () => {
           return;
         }
         
-        // Check if we have tokens in URL (from our custom Steam auth)
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
+        // Get the current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (accessToken && refreshToken) {
-          console.log("Found tokens in URL");
-          
-          // Set the session in Supabase
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          
-          if (error) {
-            console.error("Error setting session:", error);
-            throw error;
-          }
-          
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          throw sessionError;
+        }
+        
+        if (session) {
+          console.log("User is authenticated:", session.user);
           toast({
             title: 'Login bem-sucedido',
             description: 'Você foi autenticado com sucesso via Steam.',
           });
-          
-          // Redirect to home page after successful login
           setRedirectTo('/inventory');
           return;
         }
         
         // If we've reached here without returning, something unexpected happened
-        console.error("Tokens not found in URL");
+        console.error("No session found");
         
         toast({
           title: 'Erro de autenticação',

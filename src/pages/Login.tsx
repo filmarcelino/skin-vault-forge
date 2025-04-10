@@ -29,7 +29,7 @@ const Login = () => {
         return;
       }
       
-      // Check for access_token and refresh_token in URL (from Steam auth callback)
+      // Check for access_token and refresh_token in URL (from Vercel Edge Function)
       const params = new URLSearchParams(window.location.search);
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');

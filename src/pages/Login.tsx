@@ -29,7 +29,7 @@ const Login = () => {
         return;
       }
       
-      // Check for access_token and refresh_token in URL (from Vercel Edge Function)
+      // Check for access_token and refresh_token in URL (from Steam auth callback)
       const params = new URLSearchParams(window.location.search);
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
@@ -61,21 +61,21 @@ const Login = () => {
       }
       
       setIsLoading(false);
+      
+      // Check for error parameter in URL
+      const error = params.get('error');
+      if (error) {
+        toast({
+          title: "Erro de autenticação",
+          description: decodeURIComponent(error),
+          variant: "destructive"
+        });
+        setError(decodeURIComponent(error));
+      }
     };
     
     // Check session on component mount
     checkSession();
-    
-    // Check for error parameter in URL
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get('error');
-    if (error) {
-      toast({
-        title: "Erro de autenticação",
-        description: decodeURIComponent(error),
-        variant: "destructive"
-      });
-    }
   }, [navigate, toast]);
 
   return (

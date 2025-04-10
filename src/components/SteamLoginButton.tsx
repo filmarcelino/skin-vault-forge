@@ -21,15 +21,8 @@ const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) =
       
       console.log('Starting Steam login process');
       
-      // Redirect to Steam OpenID login
-      const appUrl = "https://skin-vault-forge.lovable.app";
-      const callbackUrl = `${appUrl}/api/steam-auth-callback`;
-      
-      // Construct the Steam OpenID URL
-      const redirectUrl = `https://steamcommunity.com/openid/login?openid.ns=http://specs.openid.net/auth/2.0&openid.mode=checkid_setup&openid.return_to=${encodeURIComponent(callbackUrl)}&openid.realm=${encodeURIComponent(appUrl)}&openid.identity=http://specs.openid.net/auth/2.0/identifier_select&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select`;
-      
-      console.log('Redirecting to Steam:', redirectUrl);
-      window.location.href = redirectUrl;
+      // Redirect to our Steam auth API route
+      window.location.href = '/api/auth/steam';
       
     } catch (error) {
       console.error('Steam login error:', error);

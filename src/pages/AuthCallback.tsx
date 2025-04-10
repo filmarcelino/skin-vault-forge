@@ -27,7 +27,7 @@ const AuthCallback = () => {
           console.error("Login error from URL:", errorParam);
           setError(errorParam);
           toast({
-            title: 'Authentication failed',
+            title: 'Falha na autenticação',
             description: errorParam,
             variant: 'destructive',
           });
@@ -35,67 +35,48 @@ const AuthCallback = () => {
           return;
         }
         
-        // Check if we have session data in URL (from our custom Steam auth)
-        const sessionParam = searchParams.get('session');
+        // Check if we have tokens in URL (from our custom Steam auth)
+        const accessToken = searchParams.get('access_token');
+        const refreshToken = searchParams.get('refresh_token');
         
-        if (sessionParam) {
-          console.log("Found session data in URL");
-          try {
-            // Parse the session data
-            const sessionData = JSON.parse(decodeURIComponent(sessionParam));
-            console.log("Session data parsed successfully");
-            
-            // Set the session in Supabase
-            if (sessionData?.access_token && sessionData?.refresh_token) {
-              console.log("Setting session in Supabase");
-              const { error } = await supabase.auth.setSession({
-                access_token: sessionData.access_token,
-                refresh_token: sessionData.refresh_token,
-              });
-              
-              if (error) {
-                console.error("Error setting session:", error);
-                throw error;
-              }
-              
-              toast({
-                title: 'Login successful',
-                description: 'You have been successfully signed in via Steam.',
-              });
-              
-              // Redirect to home page after successful login
-              setRedirectTo('/');
-              return;
-            } else {
-              console.error("Invalid session data:", sessionData);
-              throw new Error("Invalid session data");
-            }
-          } catch (err) {
-            console.error('Error setting custom session:', err);
-            toast({
-              title: 'Authentication failed',
-              description: 'There was a problem with your Steam sign in. Please try again.',
-              variant: 'destructive',
-            });
-            setRedirectTo('/login');
-            return;
+        if (accessToken && refreshToken) {
+          console.log("Found tokens in URL");
+          
+          // Set the session in Supabase
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error("Error setting session:", error);
+            throw error;
           }
+          
+          toast({
+            title: 'Login bem-sucedido',
+            description: 'Você foi autenticado com sucesso via Steam.',
+          });
+          
+          // Redirect to home page after successful login
+          setRedirectTo('/inventory');
+          return;
         }
         
         // If we've reached here without returning, something unexpected happened
-        console.error("Session parameter not found in URL");
+        console.error("Tokens not found in URL");
         
         toast({
-          title: 'Authentication error',
-          description: 'An unexpected error occurred during authentication. Please try again.',
+          title: 'Erro de autenticação',
+          description: 'Ocorreu um erro inesperado durante a autenticação. Por favor, tente novamente.',
           variant: 'destructive',
         });
         setRedirectTo('/login');
       } catch (err) {
         console.error('Error in auth callback:', err);
         toast({
-          title: 'Error',
-          description: 'An unexpected error occurred. Please try again.',
+          title: 'Erro',
+          description: 'Ocorreu um erro inesperado. Por favor, tente novamente.',
           variant: 'destructive',
         });
         setRedirectTo('/login');
@@ -111,7 +92,7 @@ const AuthCallback = () => {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Authenticating...</p>
+        <p className="mt-4 text-muted-foreground">Autenticando...</p>
       </div>
     );
   }
@@ -120,13 +101,13 @@ const AuthCallback = () => {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <div className="bg-destructive/10 text-destructive p-4 rounded-md max-w-md text-center">
-          <h2 className="text-xl font-bold mb-2">Authentication Failed</h2>
+          <h2 className="text-xl font-bold mb-2">Falha na Autenticação</h2>
           <p>{error}</p>
           <button 
             className="mt-4 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
             onClick={() => navigate('/login')}
           >
-            Return to Login
+            Voltar para Login
           </button>
         </div>
       </div>
@@ -140,7 +121,7 @@ const AuthCallback = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="mt-4 text-muted-foreground">Redirecting...</p>
+      <p className="mt-4 text-muted-foreground">Redirecionando...</p>
     </div>
   );
 };

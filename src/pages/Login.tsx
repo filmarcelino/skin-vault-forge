@@ -22,14 +22,22 @@ const Login = () => {
           description: "Você foi autenticado com sucesso.",
         });
         navigate('/');
-      } else {
-        // Auto-redirect to Steam login
-        document.getElementById('steam-login-btn')?.click();
       }
     };
     
     // Check session on component mount
     checkSession();
+    
+    // Check for error parameter in URL
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      toast({
+        title: "Erro de autenticação",
+        description: decodeURIComponent(error),
+        variant: "destructive"
+      });
+    }
   }, [navigate, toast]);
 
   return (
@@ -38,16 +46,16 @@ const Login = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold tracking-tight">SkinVault</h2>
           <p className="text-sm text-muted-foreground mt-2">
-            Redirecionando para autenticação...
+            Faça login para acessar sua conta
           </p>
         </div>
 
-        <div className="mt-8 space-y-6 hidden">
+        <div className="mt-8 space-y-6">
           <SteamLoginButton id="steam-login-btn" />
         </div>
         
-        <div className="flex justify-center mt-4">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        <div className="text-center mt-4 text-sm text-muted-foreground">
+          Ao fazer login, você concorda com nossos termos de serviço e política de privacidade.
         </div>
       </div>
     </div>

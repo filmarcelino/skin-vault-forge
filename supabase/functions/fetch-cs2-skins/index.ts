@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     console.log('Fetching skins data from ByMykel API...');
-    const response = await fetch('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/pt-BR/skins.json');
+    const response = await fetch('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json');
     
     if (!response.ok) {
       throw new Error(`Failed to fetch skins: ${response.statusText}`);

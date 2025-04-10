@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import SteamAuth from "./pages/SteamAuth";
 import Login from "./pages/Login";
+import ApiTest from "./pages/ApiTest";
 
 const AppRoutes = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -30,7 +30,6 @@ const AppRoutes = () => {
     return () => subscription.unsubscribe();
   }, [navigate, location]);
 
-  // Protected route wrapper
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated === null) {
       return (
@@ -53,6 +52,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/steam-auth" element={<SteamAuth />} />
+      <Route path="/api-test" element={<ApiTest />} />
       <Route
         path="/"
         element={

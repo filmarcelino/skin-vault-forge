@@ -41,10 +41,21 @@ const SteamAuth = () => {
             // Continue anyway as this is not critical
           }
           
+          // Fetch user's Steam inventory and store it
+          try {
+            await fetchAndStoreInventory(steamId, sessionData.session.access_token);
+          } catch (invError) {
+            console.error('Error fetching inventory:', invError);
+            // Non-critical, continue
+          }
+          
           toast({
             title: 'Steam account linked',
             description: 'Your Steam account has been successfully linked.',
           });
+          
+          // Redirect to inventory page
+          setTimeout(() => navigate('/inventory'), 1000);
         } else {
           console.log('No session found, checking for existing user with Steam ID');
           
@@ -74,10 +85,10 @@ const SteamAuth = () => {
             title: 'Login successful',
             description: 'Successfully authenticated with Steam.',
           });
+          
+          // Redirect to login page which will handle the rest
+          setTimeout(() => navigate('/login?steamId=' + steamId), 1000);
         }
-        
-        // Redirect to main page
-        navigate('/');
       } catch (error) {
         console.error('Steam auth error:', error);
         setError(error.message || 'Failed to authenticate with Steam');
@@ -96,6 +107,28 @@ const SteamAuth = () => {
 
     handleSteamAuth();
   }, [navigate, toast]);
+  
+  // Helper function to fetch and store the user's inventory
+  const fetchAndStoreInventory = async (steamId: string, token: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-steam-inventory', {
+        body: { steamId },
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (error) {
+        throw new Error(`Failed to fetch inventory: ${error.message}`);
+      }
+      
+      console.log('Successfully fetched and stored inventory');
+      return data;
+    } catch (error) {
+      console.error('Error in fetchAndStoreInventory:', error);
+      throw error;
+    }
+  };
 
   if (error) {
     return (

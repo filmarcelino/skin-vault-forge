@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart, Shield, LogIn } from 'lucide-react';
+import { Menu, User, Settings, SunMoon, Search, X, ShoppingCart, Shield, LogIn, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -155,6 +156,10 @@ const Navbar: React.FC = () => {
                   <Link to="/inventory" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Inventory
                   </Link>
+                  <Link to="/steam-inventory" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                    <Cloud className="h-4 w-4" />
+                    Steam Inventory
+                  </Link>
                   <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                     Market
                   </a>
@@ -212,6 +217,13 @@ const Navbar: React.FC = () => {
               className="text-sm font-medium transition-colors hover:text-foreground text-muted-foreground"
             >
               Inventory
+            </Link>
+            <Link 
+              to="/steam-inventory" 
+              className="text-sm font-medium transition-colors hover:text-foreground text-muted-foreground flex items-center gap-1"
+            >
+              <Cloud className="h-3 w-3" />
+              Steam Inventory
             </Link>
             <a 
               href="#" 

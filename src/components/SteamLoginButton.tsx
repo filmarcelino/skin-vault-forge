@@ -8,9 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface SteamLoginButtonProps {
   id?: string;
+  className?: string;
+  onSuccess?: (steamId: string) => void;
 }
 
-const SteamLoginButton = ({ id }: SteamLoginButtonProps) => {
+const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
@@ -51,7 +53,7 @@ const SteamLoginButton = ({ id }: SteamLoginButtonProps) => {
   return (
     <Button 
       onClick={handleSteamLogin}
-      className="bg-[#171a21] hover:bg-[#2a475e] text-white w-full"
+      className={`bg-[#171a21] hover:bg-[#2a475e] text-white w-full ${className || ''}`}
       disabled={isLoading}
       id={id}
     >

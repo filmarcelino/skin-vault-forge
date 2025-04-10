@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      inventarios: {
+        Row: {
+          id: string
+          inventario: Json
+          steam_id: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          inventario: Json
+          steam_id: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          inventario?: Json
+          steam_id?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

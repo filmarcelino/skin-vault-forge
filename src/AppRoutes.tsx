@@ -4,6 +4,7 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Inventory from "./pages/Inventory";
+import SteamInventory from "./pages/SteamInventory";
 import InventoryManagement from "./pages/InventoryManagement";
 import InventoryAnalytics from "./pages/InventoryAnalytics";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -65,6 +66,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Inventory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/steam-inventory"
+        element={
+          <ProtectedRoute>
+            <SteamInventory />
           </ProtectedRoute>
         }
       />

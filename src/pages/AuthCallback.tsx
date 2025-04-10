@@ -35,11 +35,51 @@ const AuthCallback = () => {
           return;
         }
         
-        // Check if we have session data in URL (from our custom Steam auth)
+        // Check for access_token and refresh_token in URL (from Steam auth)
+        const access_token = searchParams.get('access_token');
+        const refresh_token = searchParams.get('refresh_token');
+        
+        if (access_token && refresh_token) {
+          console.log("Found auth tokens in URL");
+          
+          try {
+            // Set the session in Supabase
+            console.log("Setting session in Supabase with tokens");
+            const { error } = await supabase.auth.setSession({
+              access_token: access_token,
+              refresh_token: refresh_token,
+            });
+            
+            if (error) {
+              console.error("Error setting session:", error);
+              throw error;
+            }
+            
+            toast({
+              title: 'Login successful',
+              description: 'You have been successfully signed in via Steam.',
+            });
+            
+            // Redirect to home page after successful login
+            setRedirectTo('/');
+            return;
+          } catch (err) {
+            console.error('Error setting session with tokens:', err);
+            toast({
+              title: 'Authentication failed',
+              description: 'There was a problem with your Steam sign in. Please try again.',
+              variant: 'destructive',
+            });
+            setRedirectTo('/login');
+            return;
+          }
+        }
+        
+        // Check if we have session data in URL (from our custom Steam auth - legacy format)
         const sessionParam = searchParams.get('session');
         
         if (sessionParam) {
-          console.log("Found session data in URL");
+          console.log("Found session data in URL (legacy format)");
           try {
             // Parse the session data
             const sessionData = JSON.parse(decodeURIComponent(sessionParam));
@@ -47,7 +87,7 @@ const AuthCallback = () => {
             
             // Set the session in Supabase
             if (sessionData?.access_token && sessionData?.refresh_token) {
-              console.log("Setting session in Supabase");
+              console.log("Setting session in Supabase with legacy format");
               const { error } = await supabase.auth.setSession({
                 access_token: sessionData.access_token,
                 refresh_token: sessionData.refresh_token,
@@ -83,7 +123,7 @@ const AuthCallback = () => {
         }
         
         // If we've reached here without returning, something unexpected happened
-        console.error("Session parameter not found in URL");
+        console.error("No valid authentication data found in URL");
         
         toast({
           title: 'Authentication error',

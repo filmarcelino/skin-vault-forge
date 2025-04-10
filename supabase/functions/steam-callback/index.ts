@@ -1,17 +1,12 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
-
-// Get Supabase credentials from environment
-const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const steamApiKey = Deno.env.get('STEAM_API_KEY') ?? '';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -40,13 +35,12 @@ serve(async (req) => {
     
     console.log(`Steam ID extracted: ${steamId}`);
     
+    // Get Steam API key from environment
+    const steamApiKey = Deno.env.get('STEAM_API_KEY') ?? '';
     if (!steamApiKey) {
       console.error('No Steam API key found in environment');
       throw new Error('Steam API key not configured');
     }
-    
-    // Create Supabase client with service role to manage users
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Fetch Steam user details
     console.log(`Fetching Steam user details for Steam ID: ${steamId}`);
@@ -71,45 +65,43 @@ serve(async (req) => {
     }
     
     console.log(`Steam user found: ${steamUser.personaname}`);
+
+    // Create Supabase client with service role to manage users
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Check if user with this Steam ID exists
-    console.log('Checking if user exists in database');
-    const { data: existingUser, error: queryError } = await supabase
-      .from('users')
-      .select('id, email, username, avatar_url')
-      .eq('steam_id', steamId)
-      .maybeSingle();
-      
-    if (queryError) {
-      console.error(`Error querying user: ${queryError.message}`);
-      throw queryError;
+    // Generate a unique email that won't conflict
+    const email = `${steamId}@steam.placeholder`;
+    // Generate a secure password
+    const password = crypto.randomUUID();
+    
+    // Check if user already exists
+    const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    });
+    
+    if (listError) {
+      console.error(`Error listing users: ${listError.message}`);
+      throw listError;
     }
     
-    let userId;
-    let user;
+    const existingUser = existingUsers.users.find(u => u.email === email);
     
-    if (existingUser) {
-      // User exists, use existing user ID
-      console.log(`Existing user found with id: ${existingUser.id}`);
-      userId = existingUser.id;
-      user = existingUser;
-    } else {
+    if (!existingUser) {
       // Create a new user with Steam data
       console.log('Creating new user with Steam data');
-      
-      // Generate a unique email that won't conflict
-      const randomEmail = `${steamId}_${Math.random().toString(36).substring(2)}@steam.placeholder`;
-      
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
-        email: randomEmail,
-        password: crypto.randomUUID(),
-        email_confirm: true,
+        email,
+        password,
         user_metadata: {
           steam_id: steamId,
           username: steamUser.personaname,
           avatar_url: steamUser.avatarfull,
           provider: 'steam',
-        }
+        },
+        email_confirm: true
       });
       
       if (createError) {
@@ -117,162 +109,31 @@ serve(async (req) => {
         throw createError;
       }
       
-      userId = authUser.user.id;
-      console.log(`New user created with id: ${userId}`);
-      
-      // Wait a moment to ensure the auth trigger has time to create the profile
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Ensure profile exists and has Steam data
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (profileError) {
-        console.error(`Error checking profile: ${profileError.message}`);
-      }
-      
-      // Insert or update the user record
-      const userData = {
-        id: userId,
-        steam_id: steamId,
-        username: steamUser.personaname,
-        avatar_url: steamUser.avatarfull,
-        email: randomEmail,
-        is_admin: false
-      };
-      
-      // First try to update if user exists in users table
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          steam_id: steamId,
-          username: steamUser.personaname,
-          avatar_url: steamUser.avatarfull
-        })
-        .eq('id', userId);
-      
-      if (updateError) {
-        console.log(`User not found in users table, creating new record`);
-        // User doesn't exist in users table, insert new record
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert(userData);
-          
-        if (insertError) {
-          console.error(`Error inserting user: ${insertError.message}`);
-          
-          // Try without is_admin if that's causing problems
-          if (insertError.message.includes('is_admin')) {
-            console.log('Trying insertion without is_admin field');
-            
-            const { id, steam_id, username, avatar_url, email } = userData;
-            const { error: retryError } = await supabase
-              .from('users')
-              .insert({ id, steam_id, username, avatar_url, email });
-              
-            if (retryError) {
-              console.error(`Error in retry insertion: ${retryError.message}`);
-            } else {
-              console.log('Successfully inserted user without is_admin field');
-            }
-          }
-        }
-      } else {
-        console.log('Successfully updated user record');
-      }
-      
-      user = userData;
+      console.log(`New user created with id: ${authUser.user.id}`);
+    } else {
+      console.log(`Existing user found with id: ${existingUser.id}`);
     }
     
-    // Create a session for the user - FIX HERE
-    console.log('Creating session for user');
-    
-    // Use the createUserSession method instead which is available in newer Supabase versions
-    // Generate JWT token for the user
-    const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: crypto.randomUUID(), // This won't actually be used since we're using service role
+    // Log in the user to get tokens
+    const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
     
-    if (signInError) {
-      console.error(`Error signing in user: ${signInError.message}`);
-      
-      // Fallback to manual JWT generation
-      const { data: token, error: tokenError } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: user.email,
-      });
-      
-      if (tokenError) {
-        console.error(`Error generating token: ${tokenError.message}`);
-        throw new Error('Failed to create user session');
-      }
-      
-      // Use the token properties
-      const finalSessionData = {
-        session: {
-          access_token: token.properties?.access_token || '',
-          refresh_token: token.properties?.refresh_token || '',
-        }
-      };
-      
-      // Determine the redirect URL - set a fixed URL for easier debugging
-      const redirectUrl = 'https://skin-vault-forge.lovable.app/auth/callback';
-      
-      // Encode the session data for the redirect
-      const sessionString = JSON.stringify({
-        access_token: finalSessionData.session.access_token,
-        refresh_token: finalSessionData.session.refresh_token,
-        user: {
-          id: userId,
-          email: user.email,
-          username: user.username,
-          avatar_url: user.avatar_url,
-          steam_id: steamId
-        }
-      });
-      
-      const encodedSession = encodeURIComponent(sessionString);
-      
-      // Redirect to the client with session data
-      const finalRedirectUrl = `${redirectUrl}?session=${encodedSession}`;
-      console.log(`Redirecting to: ${finalRedirectUrl}`);
-      
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': finalRedirectUrl
-        }
-      });
+    if (loginError || !sessionData.session) {
+      console.error(`Login failed: ${loginError?.message}`);
+      throw new Error('Failed to create user session');
     }
     
-    // Use the session data from signInWithPassword
     console.log('Session created successfully');
     
-    // Determine the redirect URL - set a fixed URL for easier debugging
+    // Determine the redirect URL
     const redirectUrl = 'https://skin-vault-forge.lovable.app/auth/callback';
+    const access_token = sessionData.session.access_token;
+    const refresh_token = sessionData.session.refresh_token;
     
-    // Encode the session data for the redirect
-    const sessionString = JSON.stringify({
-      access_token: sessionData.session?.access_token,
-      refresh_token: sessionData.session?.refresh_token,
-      user: {
-        id: userId,
-        email: user.email,
-        username: user.username,
-        avatar_url: user.avatar_url,
-        steam_id: steamId
-      }
-    });
-    
-    const encodedSession = encodeURIComponent(sessionString);
-    
-    // Redirect to the client with session data
-    const finalRedirectUrl = `${redirectUrl}?session=${encodedSession}`;
+    // Redirect to the client with session tokens
+    const finalRedirectUrl = `${redirectUrl}?access_token=${access_token}&refresh_token=${refresh_token}`;
     console.log(`Redirecting to: ${finalRedirectUrl}`);
     
     return new Response(null, {

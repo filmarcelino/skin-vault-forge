@@ -10,7 +10,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import SteamAuth from "./pages/SteamAuth";
-import SteamCallback from "./pages/SteamCallback";
 import Login from "./pages/Login";
 
 const AppRoutes = () => {
@@ -52,7 +51,6 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/auth/steam-callback" element={<SteamCallback />} />
       <Route path="/steam-auth" element={<SteamAuth />} />
       <Route
         path="/"

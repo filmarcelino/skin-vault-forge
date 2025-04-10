@@ -18,6 +18,9 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || '';
     console.log(`Request origin: ${origin}`);
     
+    // Use the supplied API key and domain
+    const steamApiKey = Deno.env.get('STEAM_API_KEY') || '41DD5A77403AA95DE9C0C0DF23B1196C';
+    
     // Determine the callback URL based on the environment
     let callbackUrl;
     // For production with Supabase edge functions

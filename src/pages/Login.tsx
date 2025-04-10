@@ -29,60 +29,34 @@ const Login = () => {
         return;
       }
       
-      // Check for steamId parameter in URL
+      // Check for access_token and refresh_token in URL (from Steam auth callback)
       const params = new URLSearchParams(window.location.search);
-      const steamId = params.get('steamId') || localStorage.getItem('steamId');
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
       
-      if (steamId) {
-        console.log('Found Steam ID, creating anonymous account:', steamId);
+      if (accessToken && refreshToken) {
+        console.log('Found tokens in URL, setting session');
         try {
-          // Generate a random email that won't conflict
-          const randomEmail = `${steamId}_${Math.random().toString(36).substring(2)}@steam.user`;
-          // Generate a random secure password
-          const randomPassword = crypto.randomUUID();
-          
-          // Create a new user account
-          const { data, error } = await supabase.auth.signUp({
-            email: randomEmail,
-            password: randomPassword,
-            options: {
-              data: {
-                steam_id: steamId,
-                provider: 'steam'
-              }
-            }
+          // Set the session in Supabase
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
           });
           
           if (error) throw error;
           
-          if (data.user) {
-            console.log('Created new user account:', data.user.id);
-            
-            // Update the users table with Steam ID
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({ 
-                steam_id: steamId,
-              })
-              .eq('id', data.user.id);
-              
-            if (updateError) {
-              console.error('Error updating user with Steam ID:', updateError);
-            }
-            
-            localStorage.removeItem('steamId');
-            
-            // Redirect to inventory page
-            toast({
-              title: "Account created",
-              description: "Your account has been created and linked with Steam.",
-            });
-            
-            navigate('/inventory');
-          }
+          // Clear tokens from URL for security
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          toast({
+            title: "Login bem-sucedido",
+            description: "Você foi autenticado com sucesso via Steam.",
+          });
+          
+          navigate('/inventory');
         } catch (err) {
-          console.error('Error creating account:', err);
-          setError('Failed to create account. Please try logging in again.');
+          console.error('Error setting session:', err);
+          setError('Falha ao configurar a sessão. Por favor, tente novamente.');
         }
       }
       
@@ -105,26 +79,26 @@ const Login = () => {
   }, [navigate, toast]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-[#121212]">
+      <div className="w-full max-w-md space-y-8 p-8 bg-[#1a1a1a] rounded-lg shadow-lg border border-[#333]">
         {isLoading ? (
           <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p>Authenticating with Steam...</p>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#8a2be2]" />
+            <p className="text-white">Autenticando com o Steam...</p>
           </div>
         ) : (
           <>
             <div className="text-center">
-              <h2 className="text-2xl font-bold tracking-tight">SkinVault</h2>
-              <p className="text-sm text-muted-foreground mt-2">
+              <h2 className="text-2xl font-bold tracking-tight text-white">SkinVault</h2>
+              <p className="text-sm text-gray-400 mt-2">
                 Faça login para acessar sua conta
               </p>
             </div>
 
             {error && (
-              <Alert variant="destructive" className="my-4">
+              <Alert variant="destructive" className="my-4 bg-red-900/20 border-red-900">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
+                <AlertTitle>Erro</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -133,7 +107,7 @@ const Login = () => {
               <SteamLoginButton id="steam-login-btn" />
             </div>
             
-            <div className="text-center mt-4 text-sm text-muted-foreground">
+            <div className="text-center mt-4 text-sm text-gray-500">
               Ao fazer login, você concorda com nossos termos de serviço e política de privacidade.
             </div>
           </>

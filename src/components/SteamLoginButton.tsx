@@ -53,19 +53,16 @@ const SteamLoginButton = ({ id, className, onSuccess }: SteamLoginButtonProps) =
   return (
     <Button 
       onClick={handleSteamLogin}
-      className={`relative overflow-hidden group ${className || ''}`}
+      className={`bg-[#171a21] hover:bg-[#2a475e] text-white w-full ${className || ''}`}
       disabled={isLoading}
       id={id}
     >
-      <span className="absolute inset-0 bg-gradient-to-r from-neon-violet/20 to-neon-blue/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-      
       {isLoading ? (
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
-        <FaSteam className="mr-3 h-5 w-5" />
+        <FaSteam className="mr-2" />
       )}
-      
-      <span>Entrar com Steam</span>
+      Entrar com Steam
     </Button>
   );
 };

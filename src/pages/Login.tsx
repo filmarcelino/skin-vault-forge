@@ -74,15 +74,15 @@ const Login = () => {
             
             // Redirect to inventory page
             toast({
-              title: "Conta criada",
-              description: "Sua conta foi criada e vinculada com o Steam.",
+              title: "Account created",
+              description: "Your account has been created and linked with Steam.",
             });
             
             navigate('/inventory');
           }
         } catch (err) {
           console.error('Error creating account:', err);
-          setError('Falha ao criar conta. Por favor, tente fazer login novamente.');
+          setError('Failed to create account. Please try logging in again.');
         }
       }
       
@@ -105,71 +105,39 @@ const Login = () => {
   }, [navigate, toast]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background bg-grid-pattern">
-      <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-0"></div>
-      
-      <div className="w-full max-w-md space-y-8 p-8 rounded-lg border border-neon-purple/20 backdrop-blur-sm bg-black/50 shadow-xl relative z-10">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-md space-y-8 p-8">
         {isLoading ? (
           <div className="text-center py-12">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-6 text-neon-purple" />
-            <p className="text-lg text-neon-purple/80">Autenticando com Steam...</p>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p>Authenticating with Steam...</p>
           </div>
         ) : (
           <>
             <div className="text-center">
-              <div className="flex justify-center mb-6">
-                <img 
-                  src="https://cdn-icons-png.flaticon.com/512/1138/1138004.png" 
-                  alt="SkinVault Logo" 
-                  className="h-16 w-16 animate-pulse" 
-                />
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight mb-2">
-                <span className="text-neon-purple animate-glow">Skin</span>
-                <span className="text-white">Vault</span>
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Gerencie sua coleção de skins de CS2 em um só lugar
+              <h2 className="text-2xl font-bold tracking-tight">SkinVault</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                Faça login para acessar sua conta
               </p>
             </div>
 
             {error && (
-              <Alert variant="destructive" className="my-6 border-destructive/30 bg-destructive/10">
+              <Alert variant="destructive" className="my-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro</AlertTitle>
+                <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="mt-8 space-y-6">
-              <div className="space-y-4">
-                <SteamLoginButton 
-                  id="steam-login-btn" 
-                  className="bg-[#1a1a1a] hover:bg-[#272727] border border-neon-purple/30 hover:border-neon-purple py-6 text-lg font-medium transition-all" 
-                />
-                
-                <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border/30"></div>
-                  </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-black/50 px-2 text-xs text-muted-foreground backdrop-blur-sm">
-                      Autenticação segura
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="text-center mt-4 text-xs text-muted-foreground/70">
-                Ao fazer login, você concorda com nossos <span className="underline cursor-pointer hover:text-neon-purple">termos de serviço</span> e <span className="underline cursor-pointer hover:text-neon-purple">política de privacidade</span>.
-              </div>
+              <SteamLoginButton id="steam-login-btn" />
+            </div>
+            
+            <div className="text-center mt-4 text-sm text-muted-foreground">
+              Ao fazer login, você concorda com nossos termos de serviço e política de privacidade.
             </div>
           </>
         )}
-      </div>
-      
-      <div className="absolute bottom-4 text-center w-full text-xs text-muted-foreground/50">
-        &copy; 2025 SkinVault. Todos os direitos reservados.
       </div>
     </div>
   );

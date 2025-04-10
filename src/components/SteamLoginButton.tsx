@@ -6,7 +6,11 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-const SteamLoginButton = () => {
+interface SteamLoginButtonProps {
+  id?: string;
+}
+
+const SteamLoginButton = ({ id }: SteamLoginButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
@@ -49,6 +53,7 @@ const SteamLoginButton = () => {
       onClick={handleSteamLogin}
       className="bg-[#171a21] hover:bg-[#2a475e] text-white w-full"
       disabled={isLoading}
+      id={id}
     >
       {isLoading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

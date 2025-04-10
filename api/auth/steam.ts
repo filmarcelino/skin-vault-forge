@@ -7,7 +7,7 @@ export default async function handler(req: Request) {
   // Get the redirect URL for after authentication
   const redirectUrl = "https://skin-vault-forge.vercel.app/auth/callback";
   
-  // Redirect to Steam OpenID login
+  // Construct the Steam OpenID URL
   const appUrl = "https://skin-vault-forge.vercel.app";
   
   // Construct the Steam OpenID URL

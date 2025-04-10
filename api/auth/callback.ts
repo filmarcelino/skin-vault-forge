@@ -27,7 +27,7 @@ export default async function handler(req: Request) {
     console.log(`Steam ID extracted: ${steamId}`);
     
     // Redirect to our Steam login endpoint with the steamid
-    return Response.redirect(`https://skin-vault-forge.vercel.app/api/steam-login?steamid=${steamId}`, 302);
+    return Response.redirect(`/api/steam-login?steamid=${steamId}`, 302);
   } catch (error) {
     console.error("Error in Steam auth callback:", error);
     return Response.redirect(`https://skin-vault-forge.vercel.app/login?error=${encodeURIComponent(error.message || "Unknown error")}`, 302);
